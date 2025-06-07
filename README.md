@@ -62,13 +62,17 @@ PROJETOMARIAALVEZ/
 
 2. Crie o arquivo `.env` com suas variáveis de ambiente (exemplo abaixo):
    ```
-   DEBUG=1
-   SECRET_KEY=sua_chave_secreta
-   DB_NAME=mariaalvezdb
-   DB_USER=postgres
-   DB_PASSWORD=senha
-   DB_HOST=db
-   DB_PORT=5432
+   POSTGRES_USER=maria
+   POSTGRES_PASSWORD=123
+   POSTGRES_DB=MariaAlvez
+   POSTGRES_HOST=db
+   POSTGRES_PORT=5432
+   # Django superuser
+   DJANGO_SUPERUSER_USERNAME=admin
+   DJANGO_SUPERUSER_EMAIL=admin@email.com
+   DJANGO_SUPERUSER_PASSWORD=admin
+   # Django secret key
+   DJANGO_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(50))")
    ```
 
 3. Suba o ambiente com Docker Compose:

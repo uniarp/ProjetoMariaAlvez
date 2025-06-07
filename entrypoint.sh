@@ -46,5 +46,6 @@ if [ "$#" -gt 0 ]; then
   echo "Executando comando: $@"
   exec "$@"
 else
-  echo "Iniciando o servidor Django em 127.0.0.1:8000/admin"
-  exec python manage.py runserver 127.0.0.1:8000/admin
+  echo "Iniciando o servidor Django em 127.0.0.1:8000"
+  exec python manage.py runserver 0.0.0.0:8000
+fi
