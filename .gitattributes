@@ -1,0 +1,2 @@
+# Define que todos os arquivos texto terão final de linha LF no repositório
+* text=auto eol=lf
