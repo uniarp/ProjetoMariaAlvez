@@ -23,25 +23,6 @@ def validar_cpf(cpf):
         if digito != int(cpf[i]):
             raise ValidationError(_('CPF inválido.'))
 
-
-def validar_telefone(telefone):
-    if not re.fullmatch(r'\d{10,11}', telefone):
-        raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
-
-
-def validar_cpf(cpf):
-    cpf = re.sub(r'\D', '', cpf)
-
-    if len(cpf) != 11 or cpf == cpf[0] * 11:
-        raise ValidationError(_('CPF inválido.'))
-
-    for i in range(9, 11):
-        soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
-        digito = ((soma * 10) % 11) % 10
-        if digito != int(cpf[i]):
-            raise ValidationError(_('CPF inválido.'))
-
-
 def validar_telefone(telefone):
     telefone_numeros = re.sub(r'\D', '', telefone)
     if not re.fullmatch(r'\d{10,11}', telefone_numeros):
@@ -77,14 +58,14 @@ class Tutor(models.Model):
         cpf = re.sub(r'\D', '', self.cpf)
         if len(cpf) == 11:
             self.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-        
+
         # Máscara no telefone
         tel = re.sub(r'\D', '', self.telefone)
         if len(tel) == 11:
             self.telefone = f"({tel[:2]}) {tel[2:7]}-{tel[7:]}"
         elif len(tel) == 10:
             self.telefone = f"({tel[:2]}) {tel[2:6]}-{tel[6:]}"
-        
+
         # Máscara no CEP: 12345-678
         cep = re.sub(r'\D', '', self.cep)
         if len(cep) == 8:
