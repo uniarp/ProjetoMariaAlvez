@@ -7,7 +7,12 @@ from .models import (
 
 # Register your models here.
 admin.site.register(Veterinario)
-admin.site.register(Tutor)
+
+@admin.register(Tutor)
+class TutorAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'cpf', 'telefone', 'data_nascimento', 'cidade', 'estado', 'cep')
+    search_fields = ('nome', 'cpf')
+
 admin.site.register(Animal)
 admin.site.register(ConsultaClinica)
 admin.site.register(AgendamentoConsultas)
