@@ -1,4 +1,8 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from datetime import datetime, date
+import re
 
 # Classes principais
 class Veterinario(models.Model):
@@ -6,10 +10,88 @@ class Veterinario(models.Model):
         verbose_name = "Veterinário"
         verbose_name_plural = "Veterinários"
 
+def validar_cpf(cpf):
+    cpf = re.sub(r'\D', '', cpf)
+
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        raise ValidationError(_('CPF inválido.'))
+
+    # Validação dos dígitos verificadores
+    for i in range(9, 11):
+        soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
+        digito = ((soma * 10) % 11) % 10
+        if digito != int(cpf[i]):
+            raise ValidationError(_('CPF inválido.'))
+
+
+def validar_telefone(telefone):
+    if not re.fullmatch(r'\d{10,11}', telefone):
+        raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
+
+
+def validar_cpf(cpf):
+    cpf = re.sub(r'\D', '', cpf)
+
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        raise ValidationError(_('CPF inválido.'))
+
+    for i in range(9, 11):
+        soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
+        digito = ((soma * 10) % 11) % 10
+        if digito != int(cpf[i]):
+            raise ValidationError(_('CPF inválido.'))
+
+
+def validar_telefone(telefone):
+    telefone_numeros = re.sub(r'\D', '', telefone)
+    if not re.fullmatch(r'\d{10,11}', telefone_numeros):
+        raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
+
+
 class Tutor(models.Model):
-    class Meta:
-        verbose_name = "Tutor"
-        verbose_name_plural = "Tutores"
+    nome = models.CharField(max_length=100)
+    sobrenome = models.CharField(max_length=100)
+    cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf])
+    telefone = models.CharField(max_length=15, validators=[validar_telefone])
+    email = models.EmailField(blank=True, null=True)
+    data_nascimento = models.DateField()
+    endereco = models.CharField(max_length=255)
+    cidade = models.CharField(max_length=100)
+    cep = models.CharField(max_length=9)
+
+    def clean(self):
+        self.validar_data_nascimento()
+        self.aplicar_mascaras()
+
+    def validar_data_nascimento(self):
+        hoje = date.today()
+        limite_inferior = date(hoje.year - 120, hoje.month, hoje.day)
+
+        if self.data_nascimento > hoje:
+            raise ValidationError({'data_nascimento': _('A data de nascimento não pode estar no futuro.')})
+        if self.data_nascimento < limite_inferior:
+            raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga. Deve estar nos últimos 120 anos.')})
+
+    def aplicar_mascaras(self):
+        # Máscara no CPF: 123.456.789-00
+        cpf = re.sub(r'\D', '', self.cpf)
+        if len(cpf) == 11:
+            self.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        
+        # Máscara no telefone
+        tel = re.sub(r'\D', '', self.telefone)
+        if len(tel) == 11:
+            self.telefone = f"({tel[:2]}) {tel[2:7]}-{tel[7:]}"
+        elif len(tel) == 10:
+            self.telefone = f"({tel[:2]}) {tel[2:6]}-{tel[6:]}"
+        
+        # Máscara no CEP: 12345-678
+        cep = re.sub(r'\D', '', self.cep)
+        if len(cep) == 8:
+            self.cep = f"{cep[:5]}-{cep[5:]}"
+
+    def __str__(self):
+        return f"{self.nome} {self.sobrenome} ({self.cpf})"
 
 class Animal(models.Model):
     class Meta:
