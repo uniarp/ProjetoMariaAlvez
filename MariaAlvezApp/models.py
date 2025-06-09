@@ -12,11 +12,9 @@ class Veterinario(models.Model):
 
 def validar_cpf(cpf):
     cpf = re.sub(r'\D', '', cpf)
-
     if len(cpf) != 11 or cpf == cpf[0] * 11:
         raise ValidationError(_('CPF inválido.'))
 
-    # Validação dos dígitos verificadores
     for i in range(9, 11):
         soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
         digito = ((soma * 10) % 11) % 10
@@ -28,16 +26,14 @@ def validar_telefone(telefone):
     if not re.fullmatch(r'\d{10,11}', telefone_numeros):
         raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
 
-
 class Tutor(models.Model):
     nome = models.CharField(max_length=100)
-    sobrenome = models.CharField(max_length=100)
     cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf])
     telefone = models.CharField(max_length=15, validators=[validar_telefone])
-    email = models.EmailField(blank=True, null=True)
     data_nascimento = models.DateField()
     endereco = models.CharField(max_length=255)
     cidade = models.CharField(max_length=100)
+    estado = models.CharField(max_length=50)
     cep = models.CharField(max_length=9)
 
     def clean(self):
@@ -54,25 +50,25 @@ class Tutor(models.Model):
             raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga. Deve estar nos últimos 120 anos.')})
 
     def aplicar_mascaras(self):
-        # Máscara no CPF: 123.456.789-00
+        # CPF
         cpf = re.sub(r'\D', '', self.cpf)
         if len(cpf) == 11:
             self.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-
-        # Máscara no telefone
+        
+        # Telefone
         tel = re.sub(r'\D', '', self.telefone)
         if len(tel) == 11:
             self.telefone = f"({tel[:2]}) {tel[2:7]}-{tel[7:]}"
         elif len(tel) == 10:
             self.telefone = f"({tel[:2]}) {tel[2:6]}-{tel[6:]}"
-
-        # Máscara no CEP: 12345-678
+        
+        # CEP
         cep = re.sub(r'\D', '', self.cep)
         if len(cep) == 8:
             self.cep = f"{cep[:5]}-{cep[5:]}"
 
     def __str__(self):
-        return f"{self.nome} {self.sobrenome} ({self.cpf})"
+        return f"{self.nome} ({self.cpf})"
 
 class Animal(models.Model):
     class Meta:

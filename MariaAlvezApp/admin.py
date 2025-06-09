@@ -10,10 +10,10 @@ admin.site.register(Veterinario)
 
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'sobrenome', 'cpf', 'telefone', 'email', 'data_nascimento')
-    search_fields = ('nome', 'sobrenome', 'cpf')
-admin.site.register(Animal)
+    list_display = ('nome', 'cpf', 'telefone', 'data_nascimento', 'cidade', 'estado', 'cep')
+    search_fields = ('nome', 'cpf')
 
+admin.site.register(Animal)
 admin.site.register(ConsultaClinica)
 admin.site.register(AgendamentoConsultas)
 admin.site.register(RegistroVacinacao)
