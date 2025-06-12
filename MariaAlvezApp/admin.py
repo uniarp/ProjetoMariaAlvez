@@ -8,7 +8,19 @@ from .models import (
 # Register your models here.
 admin.site.register(Veterinario)
 admin.site.register(Tutor)
-admin.site.register(Animal)
+# admin.site.register(Animal)
+
+@admin.register(Animal)
+class AnimalAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'especie')
+    fields = (
+        'nome', 'especie',
+        'idade_anos', 'idade_meses', 'idade_dias',
+        'sexo',
+        'peso',
+        'rfid'      
+    )
+
 admin.site.register(ConsultaClinica)
 admin.site.register(AgendamentoConsultas)
 admin.site.register(RegistroVacinacao)
