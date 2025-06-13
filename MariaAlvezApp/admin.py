@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
     AgendamentoConsultas, RegistroVacinacao,
-    RegistroVermifugos, Exames, Medicamentos
+    RegistroVermifugos, Exames, Medicamentos, 
 )
 
 # Register your models here.

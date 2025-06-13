@@ -1,0 +1,12 @@
+<h2>Relatório de Estoque de Medicamentos</h2>
+<table border="1">
+  <tr><th>Nome</th><th>Quantidade</th><th>Validade</th><th>Status</th></tr>
+  {% for m in medicamentos %}
+    <tr>
+      <td>{{ m.nome }}</td>
+      <td>{{ m.quantidade }}</td>
+      <td>{{ m.validade }}</td>
+      <td>{% if m.validade < hoje %}VENCIDO{% else %}OK{% endif %}</td>
+    </tr>
+  {% endfor %}
+</table>

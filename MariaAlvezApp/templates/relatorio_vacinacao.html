@@ -1,0 +1,12 @@
+<h2>Relatório de Vacinação</h2>
+<table border="1">
+  <tr><th>Animal</th><th>Medicamento</th><th>Data Aplicação</th><th>Revacinação</th></tr>
+  {% for v in vacinacoes %}
+    <tr>
+      <td>{{ v.animal.nome }}</td>
+      <td>{{ v.medicamento.nome }}</td>
+      <td>{{ v.data_aplicacao }}</td>
+      <td>{{ v.data_revacinacao }}</td>
+    </tr>
+  {% endfor %}
+</table>
