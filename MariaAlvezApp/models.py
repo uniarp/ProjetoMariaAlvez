@@ -38,10 +38,24 @@ class RegistroVermifugos(models.Model):
         verbose_name_plural = "Registros de Vermífugos"
 
 class Exames(models.Model):
+    id_exame = models.BigAutoField(primary_key=True)
+    nome = models.CharField(max_length=100)
+    descricao = models.TextField()
+    tipo = models.CharField(max_length=50, choices=[
+        ('Imagem', 'Imagem'),
+        ('Laboratorial', 'Laboratorial'),
+        ('Clínico', 'Clínico'),
+    ])
+    anexo = models.FileField(upload_to='exames/', blank=True, null=True)  # Os arquivos serão salvos em /media/exames/
+    data_envio = models.DateTimeField(auto_now_add=True)
+    
     class Meta:
         verbose_name = "Exame"
         verbose_name_plural = "Exames"
 
+    def __str__(self):
+        return self.nome
+    
 # Classes de gestão
 class Medicamentos(models.Model):
     class Meta:
