@@ -13,7 +13,6 @@ admin.site.register(ConsultaClinica)
 admin.site.register(AgendamentoConsultas)
 admin.site.register(RegistroVacinacao)
 admin.site.register(RegistroVermifugos)
-""" admin.site.register(Exames) """
 admin.site.register(Medicamentos)
 
 @admin.register(Exames)
