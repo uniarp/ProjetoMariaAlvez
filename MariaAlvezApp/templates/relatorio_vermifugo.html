@@ -1,0 +1,12 @@
+<h2>Relatório de Vermífugos</h2>
+<table border="1">
+  <tr><th>Animal</th><th>Medicamento</th><th>Data Administração</th><th>Readministração</th></tr>
+  {% for v in vermifugos %}
+    <tr>
+      <td>{{ v.animal.nome }}</td>
+      <td>{{ v.medicamento.nome }}</td>
+      <td>{{ v.data_administracao }}</td>
+      <td>{{ v.data_readministracao }}</td>
+    </tr>
+  {% endfor %}
+</table>

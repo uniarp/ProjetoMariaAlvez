@@ -1,0 +1,6 @@
+<h2>Fila de Castração</h2>
+<ul>
+  {% for animal in fila %}
+    <li>{{ animal.nome }} - {{ animal.idade }} - {{ animal.tutor.nome }}</li>
+  {% endfor %}
+</ul>
