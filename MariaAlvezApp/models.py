@@ -189,18 +189,6 @@ class AgendamentoConsultas(models.Model):
         return "Agendamento sem dados completos"
 
 
-class Medicamentos(models.Model):
-    # Alteração aqui: Adicionado blank=True, null=True para permitir valores nulos
-    nome = models.CharField(max_length=255, verbose_name="Nome do Medicamento", blank=True, null=True)
-    descricao = models.TextField(blank=True, null=True, verbose_name="Descrição")
-
-    class Meta:
-        verbose_name = "Medicamento (Genérico)"
-        verbose_name_plural = "Medicamentos (Genéricos)"
-
-    def __str__(self):
-        return self.nome if self.nome else "Medicamento (sem nome)"
-
 # Classes de gestão
 class EstoqueMedicamento(models.Model):
     medicamento = models.CharField("Medicamento", max_length=255)

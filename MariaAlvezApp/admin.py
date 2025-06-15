@@ -7,14 +7,13 @@ from django.utils.html import format_html # Importe para usar tags HTML personal
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
     AgendamentoConsultas, RegistroVacinacao,
-    RegistroVermifugos, Exames, Medicamentos, EstoqueMedicamento, MovimentoEstoqueMedicamento
+    RegistroVermifugos, Exames, EstoqueMedicamento, MovimentoEstoqueMedicamento
 )
 
 # --- Registros Simples (sem alterações complexas) ---
 admin.site.register(Veterinario)
 admin.site.register(ConsultaClinica)
 admin.site.register(Exames)
-admin.site.register(Medicamentos) # Mantenha se ainda usa em algum outro lugar ou para referência
 
 # --- Admin para Tutor ---
 @admin.register(Tutor)
@@ -165,23 +164,33 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
 
 
 # --- Admin para EstoqueMedicamento ---
+from django.contrib import admin
+from django import forms
+from django.utils.html import format_html
+
+from .models import (
+    Veterinario, Tutor, Animal, ConsultaClinica,
+    AgendamentoConsultas, RegistroVacinacao,
+    RegistroVermifugos, Exames,
+    EstoqueMedicamento, MovimentoEstoqueMedicamento
+)
+
+# ... (seus admin.site.register e outras classes ModelAdmin) ...
+
 @admin.register(EstoqueMedicamento)
 class EstoqueMedicamentoAdmin(admin.ModelAdmin):
-    list_display = ('medicamento', 'lote', 'quantidade', 'data_validade', 'destaque_validade')
-    search_fields = ('medicamento', 'lote')
+    list_display = ('medicamento', 'lote', 'data_validade', 'quantidade', 'destaque_validade')
     list_filter = ('data_validade',)
-    ordering = ['medicamento']
+    search_fields = ('medicamento', 'lote')
+    readonly_fields = ('data_cadastro',)
 
-    def get_readonly_fields(self, request, obj=None):
-        if obj:
-            return ['medicamento', 'lote', 'quantidade', 'data_validade', 'data_cadastro', 'destaque_validade']
-        return ['quantidade', 'data_cadastro', 'destaque_validade']
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    # ADICIONE ESTE MÉTODO:
+    def get_queryset(self, request):
+        """
+        Retorna apenas os itens de EstoqueMedicamento com quantidade > 0.
+        """
+        qs = super().get_queryset(request)
+        return qs.filter(quantidade__gt=0) # Filtra onde a quantidade é MAIOR QUE 0
 
 # --- Admin para MovimentoEstoqueMedicamento ---
 class MovimentoEstoqueMedicamentoForm(forms.ModelForm):
