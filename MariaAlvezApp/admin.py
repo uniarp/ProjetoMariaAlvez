@@ -5,7 +5,6 @@ from .models import (
     RegistroVermifugos, Exames, Medicamentos
 )
 
-# Register your models here.
 admin.site.register(Veterinario)
 
 @admin.register(Tutor)
@@ -13,36 +12,29 @@ class TutorAdmin(admin.ModelAdmin):
     list_display = ('nome', 'cpf', 'telefone', 'data_nascimento', 'cidade', 'estado', 'cep')
     search_fields = ('nome', 'cpf')
 
-# Mantenha APENAS esta forma de registro para Animal, usando o decorador
+
 @admin.register(Animal)
 class AnimalAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'especie', 'get_idade_display', 'tutor') # Adicionei 'get_idade_display' e 'tutor' aqui, como sugeri na resposta anterior
+    list_display = ('nome', 'especie', 'get_idade', 'sexo', 'peso', 'rfid')
     list_filter = ('especie', 'sexo')
-    search_fields = ('nome', 'rfid', 'tutor__nome', 'tutor__cpf')
+    search_fields = ('nome', 'rfid')
+
+    def get_idade(self, obj):
+        return f"{obj.idade_anos}a {obj.idade_meses}m {obj.idade_dias}d"
+    get_idade.short_description = "Idade"
+
     fieldsets = (
         (None, {
-            'fields': ('nome', 'especie', 'sexo', 'peso', 'rfid', 'tutor'),
+            'fields': ('nome', 'especie', 'sexo', 'peso', 'rfid'),
         }),
         ('Informações de Idade', {
-            'fields': (
-                'data_nascimento_exata',
-                'data_nascimento_aproximada',
-                ('idade_anos', 'idade_meses', 'idade_dias'),
-            ),
-            'description': "Preencha APENAS UMA das opções de idade: Data Exata, Data Aproximada, ou Anos/Meses/Dias."
+            'fields': (('idade_anos', 'idade_meses', 'idade_dias'),),
+            'description': "Preencha a idade usando Anos, Meses e Dias."
         }),
     )
-
 @admin.register(AgendamentoConsultas)
 class AgendamentoConsultasAdmin(admin.ModelAdmin):
-    list_display = ('id_agendamento', 'animal', 'tutor', 'data_consulta')
-    list_filter = ('data_consulta',)
-    search_fields = ('animal__nome', 'tutor__nome') # Ajustado para 'tutor__nome' para pesquisa de FK
-    ordering = ('-data_consulta',)
-
-
-admin.site.register(ConsultaClinica)
-admin.site.register(RegistroVacinacao)
-admin.site.register(RegistroVermifugos)
-admin.site.register(Exames)
-admin.site.register(Medicamentos)
+    list_display = ('data_consulta', 'animal', 'tutor')
+    list_filter = ('data_consulta', 'tutor')
+    search_fields = ('animal__nome', 'tutor__nome')
+    fields = ('data_consulta', 'tutor', 'animal') 
