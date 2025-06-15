@@ -442,17 +442,46 @@ class RegistroVermifugos(models.Model):
 
 
 class Exames(models.Model):
-    # Campos de exemplo para Exames. Remova ou adapte conforme sua necessidade real.
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, verbose_name="Animal", blank=True, null=True)
-    tipo_exame = models.CharField(max_length=100, verbose_name="Tipo de Exame", blank=True, null=True)
-    data_exame = models.DateField(verbose_name="Data do Exame", blank=True, null=True)
-    resultado = models.TextField(verbose_name="Resultado", blank=True, null=True)
+    id_exame = models.BigAutoField(primary_key=True)
+
+    # Adicionando o campo 'animal' (ForeignKey)
+    animal = models.ForeignKey(
+        'Animal', # Referência ao modelo Animal. Se Animal está em outro app, use 'nome_da_app.Animal'
+        on_delete=models.CASCADE, # Se o animal for deletado, os exames dele também são
+        verbose_name="Animal",
+        blank=False, # Geralmente um exame é sempre para um animal
+        null=False # Permite que o campo seja preenchido
+    )
+
+    nome = models.CharField(max_length=100, verbose_name="Nome do Exame")
+    descricao = models.TextField(verbose_name="Descrição do Exame")
+
+    # Seu campo 'tipo' corresponde ao 'tipo_exame' do __str__
+    tipo = models.CharField(max_length=50, choices=[
+        ('Imagem', 'Imagem'),
+        ('Laboratorial', 'Laboratorial'),
+        ('Clínico', 'Clínico'),
+    ], verbose_name="Tipo de Exame")
+
+    anexo = models.FileField(upload_to='exames/', blank=True, null=True, verbose_name="Anexo do Exame")
+
+    # Adicionando o campo 'data_exame' (DateField ou DateTimeField)
+    # Escolha DateField se você só precisar da data, ou DateTimeField se precisar da hora exata
+    data_exame = models.DateField(
+        verbose_name="Data de Realização do Exame",
+        default=timezone.now # Pode ser timezone.now.date se for DateField, ou apenas timezone.now
+    )
 
     class Meta:
         verbose_name = "Exame"
         verbose_name_plural = "Exames"
+        # Adicione uma ordenação padrão, por exemplo, pelo animal e data do exame
+        ordering = ['animal__nome', '-data_exame']
 
     def __str__(self):
-        if self.animal and self.tipo_exame and self.data_exame:
-            return f"Exame de {self.tipo_exame} em {self.animal.nome} ({self.data_exame.strftime('%d/%m/%Y')})"
-        return "Exame (sem dados)"
+        # Agora todos os campos referenciados existem no modelo
+        # Use .nome no self.animal para acessar o nome do animal
+        # Use self.tipo (não self.tipo_exame) pois é o nome real do campo
+        if self.animal and self.tipo and self.data_exame:
+            return f"Exame de {self.tipo} em {self.animal.nome} ({self.data_exame.strftime('%d/%m/%Y')})"
+        return "Exame (sem dados completos)" # Mensagem de fallback, se algum campo for nulo (mas não devem ser com blank=False)
