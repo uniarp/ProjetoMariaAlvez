@@ -18,7 +18,6 @@ echo "PostgreSQL está pronto!"
 # Configurar variáveis de ambiente do Django
 export DJANGO_SETTINGS_MODULE=MariaAlvez.settings
 
-
 # Rodar as migrações do Django
 echo "Executando migrações do Django..."
 python manage.py makemigrations --noinput
