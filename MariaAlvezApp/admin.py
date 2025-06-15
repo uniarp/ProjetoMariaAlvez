@@ -5,7 +5,6 @@ from .models import (
     RegistroVermifugos, Exames, Medicamentos
 )
 admin.site.register(Veterinario)
-admin.site.register(Tutor)
 @admin.register(Animal)
 class AnimalAdmin(admin.ModelAdmin):
     list_display = ('nome', 'especie')
