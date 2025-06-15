@@ -133,8 +133,8 @@ class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(
         verbose_name="Data da Consulta",
         default=timezone.now,
-        blank=False,
-        null=False,
+        blank=True,
+        null=True,
         
     )
     tutor = models.ForeignKey(
