@@ -7,14 +7,13 @@ from django.utils.html import format_html # Importe para usar tags HTML personal
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
     AgendamentoConsultas, RegistroVacinacao,
-    RegistroVermifugos, Exames, Medicamentos, EstoqueMedicamento, MovimentoEstoqueMedicamento
+    RegistroVermifugos, Exames, EstoqueMedicamento, MovimentoEstoqueMedicamento
 )
 
 # --- Registros Simples (sem alterações complexas) ---
 admin.site.register(Veterinario)
 admin.site.register(ConsultaClinica)
 admin.site.register(Exames)
-admin.site.register(Medicamentos) # Mantenha se ainda usa em algum outro lugar ou para referência
 
 # --- Admin para Tutor ---
 @admin.register(Tutor)
