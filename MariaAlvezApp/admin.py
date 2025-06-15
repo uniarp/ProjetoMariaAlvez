@@ -162,21 +162,6 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
     status_readministracao.short_description = "Status Readministração"
     status_readministracao.admin_order_field = 'data_readministracao'
 
-
-# --- Admin para EstoqueMedicamento ---
-from django.contrib import admin
-from django import forms
-from django.utils.html import format_html
-
-from .models import (
-    Veterinario, Tutor, Animal, ConsultaClinica,
-    AgendamentoConsultas, RegistroVacinacao,
-    RegistroVermifugos, Exames,
-    EstoqueMedicamento, MovimentoEstoqueMedicamento
-)
-
-# ... (seus admin.site.register e outras classes ModelAdmin) ...
-
 @admin.register(EstoqueMedicamento)
 class EstoqueMedicamentoAdmin(admin.ModelAdmin):
     list_display = ('medicamento', 'lote', 'data_validade', 'quantidade', 'destaque_validade')
