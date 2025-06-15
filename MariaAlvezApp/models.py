@@ -1,7 +1,10 @@
 from django.db import models
-from django.utils import timezone
-from django.utils.timezone import localtime
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _ # Do main
+from datetime import datetime, date # Do main
+import re # Do main
+from django.utils import timezone # Do gabrielDalpiaz
+from django.utils.timezone import localtime # Do gabrielDalpiaz
 
 # Classes principais
 class Veterinario(models.Model):
@@ -9,12 +12,114 @@ class Veterinario(models.Model):
         verbose_name = "Veterinário"
         verbose_name_plural = "Veterinários"
 
+def validar_cpf(cpf):
+    cpf = re.sub(r'\D', '', cpf)
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        raise ValidationError(_('CPF inválido.'))
+
+    for i in range(9, 11):
+        soma = sum(int(cpf[num]) * ((i + 1) - num) for num in range(i))
+        digito = ((soma * 10) % 11) % 10
+        if digito != int(cpf[i]):
+            raise ValidationError(_('CPF inválido.'))
+
+def validar_telefone(telefone):
+    telefone_numeros = re.sub(r'\D', '', telefone)
+    if not re.fullmatch(r'\d{10,11}', telefone_numeros):
+        raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
+
 class Tutor(models.Model):
-    class Meta:
-        verbose_name = "Tutor"
-        verbose_name_plural = "Tutores"
+    nome = models.CharField(max_length=100)
+    cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf])
+    telefone = models.CharField(max_length=15, validators=[validar_telefone])
+    data_nascimento = models.DateField()
+    endereco = models.CharField(max_length=255)
+    cidade = models.CharField(max_length=100)
+    estado = models.CharField(max_length=50)
+    cep = models.CharField(max_length=9)
+
+    def clean(self):
+        self.validar_data_nascimento()
+        self.aplicar_mascaras()
+
+    def validar_data_nascimento(self):
+        hoje = date.today()
+        limite_inferior = date(hoje.year - 120, hoje.month, hoje.day)
+
+        if self.data_nascimento > hoje:
+            raise ValidationError({'data_nascimento': _('A data de nascimento não pode estar no futuro.')})
+        if self.data_nascimento < limite_inferior:
+            raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga. Deve estar nos últimos 120 anos.')})
+
+    def aplicar_mascaras(self):
+        # CPF
+        cpf = re.sub(r'\D', '', self.cpf)
+        if len(cpf) == 11:
+            self.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        
+        # Telefone
+        tel = re.sub(r'\D', '', self.telefone)
+        if len(tel) == 11:
+            self.telefone = f"({tel[:2]}) {tel[2:7]}-{tel[7:]}"
+        elif len(tel) == 10:
+            self.telefone = f"({tel[:2]}) {tel[2:6]}-{tel[6:]}"
+        
+        # CEP
+        cep = re.sub(r'\D', '', self.cep)
+        if len(cep) == 8:
+            self.cep = f"{cep[:5]}-{cep[5:]}"
+
+    def __str__(self):
+        return f"{self.nome} ({self.cpf})"
 
 class Animal(models.Model):
+    SEXO_CHOICES = [
+        ('M', 'Macho'),
+        ('F', 'Fêmea'),
+    ]
+
+    PESO_UNIDADE_CHOICES = [
+        ('kg', 'Quilos'),
+        ('g', 'Gramas'),
+    ]
+
+    nome = models.CharField(max_length=150, default="Nome")
+    especie = models.CharField(max_length=100, default="Especie")
+
+    idade_anos = models.PositiveIntegerField(default=0)
+    idade_meses = models.PositiveIntegerField(default=0)
+    idade_dias = models.PositiveIntegerField(default=0)
+
+    sexo = models.CharField(max_length=15, choices=SEXO_CHOICES, default="Sexo")
+
+    peso = models.DecimalField(
+        default=0,
+        max_digits=10,
+        decimal_places=3, # Se você quer 3 casas decimais, mantenha assim
+        help_text="Peso em quilogramas" # Adiciona uma dica para o usuário
+    )
+
+    def _str_(self):
+        return self.nome
+
+    castrado = models.BooleanField(default=False)
+    rfid = models.CharField(max_length=128, unique=True,default=0)
+
+    def clean(self):
+        # Valida idade
+        if self.idade_anos == 0 and self.idade_meses == 0 and self.idade_dias == 0:
+            raise ValidationError('O animal deve ter ao menos 1 dia de idade.')
+
+        # Valida peso
+        if self.peso <= 0:
+            raise ValidationError({'peso': 'O peso deve ser maior que zero.'})
+
+        self.nome = self.nome.strip().capitalize()
+        self.especie = self.especie.strip().capitalize()
+
+    def __str__(self):
+        return f"{self.nome} ({self.especie}) - {self.get_sexo_display()}"
+
     class Meta:
         verbose_name = "Animal"
         verbose_name_plural = "Animais"
