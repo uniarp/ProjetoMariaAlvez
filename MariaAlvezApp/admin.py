@@ -4,8 +4,8 @@ from .models import (
     AgendamentoConsultas, RegistroVacinacao,
     RegistroVermifugos, Exames, Medicamentos
 )
-
 admin.site.register(Veterinario)
+admin.site.register(ConsultaClinica)
 
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):
@@ -38,3 +38,20 @@ class AgendamentoConsultasAdmin(admin.ModelAdmin):
     list_filter = ('data_consulta', 'tutor')
     search_fields = ('animal__nome', 'tutor__nome')
     fields = ('data_consulta', 'tutor', 'animal') 
+    
+@admin.register(RegistroVacinacao)
+class RegistroVacinacaoAdmin(admin.ModelAdmin):
+    list_display = ('animal', 'medicamento', 'data_aplicacao', 'data_revacinacao')
+    search_fields = ('animal__nome', 'medicamento__nome')  # Assumindo que Animal e Medicamentos têm campo 'nome'
+    list_filter = ('data_aplicacao', 'data_revacinacao')
+    ordering = ('-data_aplicacao',)
+    
+@admin.register(RegistroVermifugos)
+class RegistroVermifugosAdmin(admin.ModelAdmin):
+    list_display = ('animal', 'medicamento', 'data_administracao', 'data_readministracao')
+    search_fields = ('animal__nome', 'medicamento__nome')  # Assumindo que Animal e Medicamentos têm campo 'nome'
+    list_filter = ('data_administracao', 'data_readministracao')
+    ordering = ('-data_administracao',)
+    
+admin.site.register(Exames)
+admin.site.register(Medicamentos)
