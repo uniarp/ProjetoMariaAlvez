@@ -4,15 +4,22 @@ from .models import (
     AgendamentoConsultas, RegistroVacinacao,
     RegistroVermifugos, Exames, Medicamentos
 )
-
-# Register your models here.
 admin.site.register(Veterinario)
-
+admin.site.register(Tutor)
+@admin.register(Animal)
+class AnimalAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'especie')
+    fields = (
+        'nome', 'especie',
+        'idade_anos', 'idade_meses', 'idade_dias',
+        'sexo',
+        'peso',
+        'rfid'      
+    )
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):
     list_display = ('nome', 'cpf', 'telefone', 'data_nascimento', 'cidade', 'estado', 'cep')
     search_fields = ('nome', 'cpf')
-
 admin.site.register(Animal)
 admin.site.register(ConsultaClinica)
 admin.site.register(AgendamentoConsultas)
