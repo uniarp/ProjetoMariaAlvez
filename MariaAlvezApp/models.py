@@ -43,11 +43,16 @@ class Tutor(models.Model):
     def validar_data_nascimento(self):
         hoje = date.today()
         limite_inferior = date(hoje.year - 120, hoje.month, hoje.day)
+        idade_minima = hoje.replace(year=hoje.year - 16)
 
         if self.data_nascimento > hoje:
             raise ValidationError({'data_nascimento': _('A data de nascimento não pode estar no futuro.')})
+
         if self.data_nascimento < limite_inferior:
             raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga. Deve estar nos últimos 120 anos.')})
+
+        if self.data_nascimento > idade_minima:
+            raise ValidationError({'data_nascimento': _('O tutor precisa ter no mínimo 16 anos para cadastro.')})
 
     def aplicar_mascaras(self):
         # CPF
@@ -69,7 +74,7 @@ class Tutor(models.Model):
 
     def __str__(self):
         return f"{self.nome} ({self.cpf})"
-
+    
 class Animal(models.Model):
     class Meta:
         verbose_name = "Animal"
