@@ -88,6 +88,10 @@ class Tutor(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.cpf})"
     
+    class Meta:
+        verbose_name = "Tutor"
+        verbose_name_plural = "Tutores"
+    
 class Animal(models.Model):
     SEXO_CHOICES = [
         ('M', 'Macho'),
