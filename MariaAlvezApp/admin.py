@@ -12,8 +12,13 @@ from .models import (
 
 # --- Registros Simples (sem alterações complexas) ---
 admin.site.register(Veterinario)
-admin.site.register(ConsultaClinica)
 admin.site.register(Exames)
+
+# --- Admin para ConsultaClinica ---
+@admin.register(ConsultaClinica)
+class ConsultaClinicaAdmin(admin.ModelAdmin):
+    list_display = ('nome_animal', 'data_atendimento', 'nome_vet_responsavel', 'tipo_atendimento', 'diagnostico')
+    search_fields = ('nome_animal', 'nome_vet_responsavel', 'diagnostico')
 
 # --- Admin para Tutor ---
 @admin.register(Tutor)

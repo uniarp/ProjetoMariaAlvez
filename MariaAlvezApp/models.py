@@ -139,20 +139,45 @@ class Animal(models.Model):
         verbose_name_plural = "Animais"
 
 class ConsultaClinica(models.Model):
-    # Adicione campos para ConsultaClinica conforme necessário
-    # Por exemplo:
-    # animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
-    # data_consulta = models.DateTimeField()
-    # diagnostico = models.TextField(blank=True, null=True)
-    # tratamento = models.TextField(blank=True, null=True)
-    
+    data_atendimento = models.DateTimeField(default=timezone.now, help_text="Data e hora da consulta")
+    tipo_atendimento = models.CharField(max_length=100, blank=True, null=True, help_text="Tipo de atendimento (ex: Rotina, Emergência)")
+    nome_vet_responsavel = models.CharField(max_length=100, blank=True, null=True, help_text="Nome do veterinário responsável")
+    nome_animal = models.CharField(max_length=100, blank=True, null=True, help_text="Nome do animal atendido")
+    diagnostico = models.TextField(blank=True, null=True, help_text="Diagnóstico da consulta")
+    observacoes = models.TextField(blank=True, null=True, help_text="Observações adicionais da consulta")
+    frequencia_cardiaca = models.IntegerField(blank=True, null=True, help_text="Frequência cardíaca em batimentos por minuto (BPM)")
+    frequencia_respiratoria = models.IntegerField(blank=True, null=True, help_text="Frequência respiratória em respirações por minuto (RPM)")
+    temperatura = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True, help_text="Temperatura corporal em graus Celsius (°C)")
+    peso = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Peso do animal em quilogramas (Kg)")  
+    avaliacao_mucosa = models.CharField(max_length=100, blank=True, null=True, help_text="Avaliação da mucosa (ex: Rósea, Pálida, Ictérica)")
+    exames_realizados = models.TextField(blank=True, null=True, help_text="Nomes ou IDs dos exames realizados (separados por vírgula)")
+    tempo_preenchimento_capilar = models.CharField(max_length=50, blank=True, null=True, help_text="Tempo de preenchimento capilar (ex: < 2 segundos, 3 segundos)")
+
     class Meta:
         verbose_name = "Consulta Clínica"
         verbose_name_plural = "Consultas Clínicas"
-    
+        ordering = ['-data_atendimento']
+
     def __str__(self):
-        # Adapte este retorno conforme os campos que você adicionar em ConsultaClinica
-        return "Consulta Clínica (sem detalhes)"
+        animal_info = self.nome_animal if self.nome_animal else 'N/A'
+        return f"Consulta de {animal_info} em {self.data_atendimento.strftime('%d/%m/%Y %H:%M')}"
+
+    def clean(self):
+        if not self.diagnostico:
+            raise ValidationError({'diagnostico': 'O campo Diagnóstico não pode ser vazio.'})
+        if not self.nome_animal:
+            raise ValidationError({'nome_animal': 'É obrigatório informar o nome do animal para a consulta.'})
+        if not self.nome_vet_responsavel:
+            raise ValidationError({'nome_vet_responsavel': 'É obrigatório informar o nome do veterinário responsável.'})
+
+        hoje = timezone.localdate()
+        data_limite = hoje - timedelta(days=15)
+
+        if self.data_atendimento and self.data_atendimento.date() < data_limite:
+            raise ValidationError({'data_atendimento': 'A data da consulta não pode ser mais antiga que 15 dias.'})
+        
+        super().clean()
+
 
 
 class AgendamentoConsultas(models.Model):
