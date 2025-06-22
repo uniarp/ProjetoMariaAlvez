@@ -1,77 +1,63 @@
 from django.contrib import admin
-from django import forms
-from django.utils import timezone
-from datetime import timedelta
-from django.utils.html import format_html # Importe para usar tags HTML personalizadas
-
+from django.urls import path, reverse
+from django.http import HttpResponseRedirect
+from django.utils.html import format_html
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
     AgendamentoConsultas, RegistroVacinacao,
-    RegistroVermifugos, Exames, EstoqueMedicamento, MovimentoEstoqueMedicamento
+    RegistroVermifugos, Exames, EstoqueMedicamento, MovimentoEstoqueMedicamento,
+    RelatoriosGerais
 )
 
-# --- Registros Simples (sem alterações complexas) ---
 admin.site.register(Veterinario)
 admin.site.register(Exames)
+admin.site.register(Tutor)
+admin.site.register(Animal)
+admin.site.register(AgendamentoConsultas)
+admin.site.register(MovimentoEstoqueMedicamento)
 
-# --- Admin para ConsultaClinica ---
+@admin.register(RelatoriosGerais)
+class RelatoriosGeraisAdmin(admin.ModelAdmin):
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        return super().changelist_view(request, extra_context=extra_context)
+
+    change_list_template = "admin/relatorios_geral_changelist.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('', self.admin_site.admin_view(self.redirecionar_para_index_relatorios), name='relatorios_gerais_index'),
+        ]
+        return custom_urls + urls
+
+    def redirecionar_para_index_relatorios(self, request):
+        return HttpResponseRedirect(reverse('relatorios_index'))
+
 @admin.register(ConsultaClinica)
 class ConsultaClinicaAdmin(admin.ModelAdmin):
     list_display = ('nome_animal', 'data_atendimento', 'nome_vet_responsavel', 'tipo_atendimento', 'diagnostico')
     search_fields = ('nome_animal', 'nome_vet_responsavel', 'diagnostico')
 
-# --- Admin para Tutor ---
-@admin.register(Tutor)
-class TutorAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'cpf', 'telefone', 'data_nascimento', 'cidade', 'estado', 'cep')
-    search_fields = ('nome', 'cpf')
+@admin.register(EstoqueMedicamento)
+class EstoqueMedicamentoAdmin(admin.ModelAdmin):
+    list_display = ('medicamento', 'lote', 'data_validade', 'quantidade', 'destaque_validade')
+    list_filter = ('data_validade',)
+    search_fields = ('medicamento', 'lote')
+    readonly_fields = ('data_cadastro',)
 
-
-# --- Admin para Animal ---
-@admin.register(Animal)
-class AnimalAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'especie', 'get_idade', 'sexo', 'peso', 'rfid')
-    list_filter = ('especie', 'sexo')
-    search_fields = ('nome', 'rfid')
-
-    def get_idade(self, obj):
-        return f"{obj.idade_anos}a {obj.idade_meses}m {obj.idade_dias}d"
-    get_idade.short_description = "Idade"
-
-    fieldsets = (
-        (None, {
-            'fields': ('nome', 'especie', 'sexo', 'peso', 'rfid'),
-        }),
-        ('Informações de Idade', {
-            'fields': (('idade_anos', 'idade_meses', 'idade_dias'),),
-            'description': "Preencha a idade usando Anos, Meses e Dias."
-        }),
-    )
-
-# --- Admin para AgendamentoConsultas ---
-@admin.register(AgendamentoConsultas)
-class AgendamentoConsultasAdmin(admin.ModelAdmin):
-    list_display = ('data_consulta', 'animal', 'tutor')
-    list_filter = ('data_consulta', 'tutor')
-    search_fields = ('animal__nome', 'tutor__nome')
-    fields = ('data_consulta', 'tutor', 'animal')
-
-# --- Admin para RegistroVacinacao ---
 @admin.register(RegistroVacinacao)
 class RegistroVacinacaoAdmin(admin.ModelAdmin):
     list_display = (
         'animal',
-        'medicamento_aplicado_display', # Novo método para exibir medicamento/lote
+        'medicamento_aplicado_display',
         'data_aplicacao',
         'data_revacinacao',
-        'status_revacinacao', # Novo método para exibir status da revacinação
+        'status_revacinacao',
     )
-    # Atualizado search_fields e list_filter para usar medicamento_aplicado__
     search_fields = ('animal__nome', 'medicamento_aplicado__medicamento', 'medicamento_aplicado__lote')
     list_filter = ('data_aplicacao', 'data_revacinacao', 'medicamento_aplicado__medicamento')
     ordering = ('-data_aplicacao',)
-
-    # Certifique-se que medicamento_aplicado está nos fields/fieldsets
     fieldsets = (
         (None, {
             'fields': ('animal', 'medicamento_aplicado', 'data_aplicacao', 'data_revacinacao')
@@ -79,9 +65,6 @@ class RegistroVacinacaoAdmin(admin.ModelAdmin):
     )
 
     def medicamento_aplicado_display(self, obj):
-        """
-        Exibe o nome do medicamento, lote e data de validade de forma amigável.
-        """
         if obj.medicamento_aplicado:
             validade = obj.medicamento_aplicado.data_validade.strftime('%d/%m/%Y')
             return format_html(
@@ -89,12 +72,9 @@ class RegistroVacinacaoAdmin(admin.ModelAdmin):
             )
         return "N/A"
     medicamento_aplicado_display.short_description = "Medicamento Aplicado (Lote/Validade)"
-    medicamento_aplicado_display.admin_order_field = 'medicamento_aplicado__medicamento' # Permite ordenar por nome do medicamento
+    medicamento_aplicado_display.admin_order_field = 'medicamento_aplicado__medicamento'
 
     def status_revacinacao(self, obj):
-        """
-        Retorna uma tag HTML com uma cor indicando o status da data de revacinação.
-        """
         if not obj.data_revacinacao:
             return format_html('<span style="color: gray;">Não definida</span>')
 
@@ -112,8 +92,6 @@ class RegistroVacinacaoAdmin(admin.ModelAdmin):
     status_revacinacao.short_description = "Status Revacinação"
     status_revacinacao.admin_order_field = 'data_revacinacao'
 
-
-# --- Admin para RegistroVermifugos ---
 @admin.register(RegistroVermifugos)
 class RegistroVermifugosAdmin(admin.ModelAdmin):
     list_display = (
@@ -126,7 +104,6 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
     search_fields = ('animal__nome', 'medicamento_administrado__medicamento', 'medicamento_administrado__lote')
     list_filter = ('data_administracao', 'data_readministracao', 'medicamento_administrado__medicamento')
     ordering = ('-data_administracao',)
-
     fieldsets = (
         (None, {
             'fields': ('animal', 'medicamento_administrado', 'data_administracao', 'data_readministracao')
@@ -134,9 +111,6 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
     )
 
     def medicamento_administrado_display(self, obj):
-        """
-        Exibe o nome do medicamento (vermífugo), lote e data de validade de forma amigável.
-        """
         if obj.medicamento_administrado:
             validade = obj.medicamento_administrado.data_validade.strftime('%d/%m/%Y')
             return format_html(
@@ -147,9 +121,6 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
     medicamento_administrado_display.admin_order_field = 'medicamento_administrado__medicamento'
 
     def status_readministracao(self, obj):
-        """
-        Retorna uma tag HTML com uma cor indicando o status da data de readministração.
-        """
         if not obj.data_readministracao:
             return format_html('<span style="color: gray;">Não definida</span>')
 
@@ -166,60 +137,3 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
 
     status_readministracao.short_description = "Status Readministração"
     status_readministracao.admin_order_field = 'data_readministracao'
-
-@admin.register(EstoqueMedicamento)
-class EstoqueMedicamentoAdmin(admin.ModelAdmin):
-    list_display = ('medicamento', 'lote', 'data_validade', 'quantidade', 'destaque_validade')
-    list_filter = ('data_validade',)
-    search_fields = ('medicamento', 'lote')
-    readonly_fields = ('data_cadastro',)
-
-    # ADICIONE ESTE MÉTODO:
-    def get_queryset(self, request):
-        """
-        Retorna apenas os itens de EstoqueMedicamento com quantidade > 0.
-        """
-        qs = super().get_queryset(request)
-        return qs.filter(quantidade__gt=0) # Filtra onde a quantidade é MAIOR QUE 0
-
-# --- Admin para MovimentoEstoqueMedicamento ---
-class MovimentoEstoqueMedicamentoForm(forms.ModelForm):
-    saldo_lote = forms.CharField(
-        label="Status do Lote",
-        required=False,
-        disabled=True,
-        initial="Informe o código do lote para verificar."
-    )
-
-    class Meta:
-        model = MovimentoEstoqueMedicamento
-        fields = '__all__'
-
-
-@admin.register(MovimentoEstoqueMedicamento)
-class MovimentoEstoqueMedicamentoAdmin(admin.ModelAdmin):
-    form = MovimentoEstoqueMedicamentoForm
-    list_display = ('data', 'tipo', 'medicamento', 'lote', 'quantidade')
-    search_fields = ('medicamento', 'lote')
-    list_filter = ('tipo', 'data')
-    list_per_page = 25
-
-    fieldsets = (
-        (None, {
-            'fields': (
-                'medicamento',
-                'lote',
-                'data_validade',
-                'tipo',
-                'quantidade',
-                'observacao',
-            )
-        }),
-    )
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-

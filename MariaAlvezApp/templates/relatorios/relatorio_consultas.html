@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Consultas</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
+        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; } /* dark color*/
+        form { margin-bottom: 20px; }
+        fieldset { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="date"], select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button.btn {
+            background-color: #006699; /* primary/info color*/
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button.btn:hover { background-color: #0056b3; } /* Um pouco mais escuro que o primary */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; } /* Um cinza claro */
+        tr:nth-child(even) { background-color: #f9f9f9; } /* Um cinza ainda mais claro para linhas pares */
+        p strong { font-weight: bold; }
+        .back-link { margin-top: 20px; }
+        .back-link a { color: #006699; text-decoration: none; } /* primary/info color*/
+        .back-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Consultas</h1>
+
+        <form method="get">
+            <fieldset>
+                <legend>Filtrar Consultas</legend>
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </fieldset>
+        </form>
+
+        {% if consultas %}
+            <p><strong>Total de Consultas:</strong> {{ consultas.count }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Veterinário</th>
+                        <th>Animal</th>
+                        <th>Tipo</th>
+                        <th>Diagnóstico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for consulta in consultas %}
+                    <tr>
+                        <td>{{ consulta.data_atendimento|date:"d/m/Y H:i" }}</td>
+                        <td>{{ consulta.nome_vet_responsavel }}</td>
+                        <td>{{ consulta.nome_animal }}</td>
+                        <td>{{ consulta.tipo_atendimento }}</td>
+                        <td>{{ consulta.diagnostico }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhuma consulta encontrada com os filtros aplicados.</p>
+        {% endif %}
+
+        <div class="back-link">
+            <p><a href="{% url 'relatorios_index' %}">← Voltar para o Painel de Relatórios</a></p>
+        </div>
+    </div>
+</body>
+</html>
