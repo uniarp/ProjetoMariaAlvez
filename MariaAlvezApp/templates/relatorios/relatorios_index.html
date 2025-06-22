@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Relatórios</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
+        .container { max-width: 900px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 30px; } /* dark color*/
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 15px; }
+        a.report-link {
+            display: block;
+            background-color: #006699; /* primary/info color*/
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        a.report-link:hover {
+            background-color: #0056b3; /* Um pouco mais escuro que o primary */
+        }
+        .back-to-admin { margin-top: 30px; text-align: center; }
+        .back-to-admin a { color: #006699; text-decoration: none; } /* primary/info color*/
+        .back-to-admin a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Painel de Relatórios</h1>
+
+        <ul>
+            <li><a href="{% url 'relatorio_consultas' %}" class="report-link">📊 Relatório de Consultas Clínicas</a></li>
+            <li><a href="{% url 'relatorio_estoque' %}" class="report-link">📦 Relatório de Estoque de Medicamentos</a></li>
+            <li><a href="{% url 'relatorio_vacinacao' %}" class="report-link">💉 Relatório de Controle de Vacinas</a></li>
+            <li><a href="{% url 'relatorio_vermifugos' %}" class="report-link">💊 Relatório de Controle de Vermífugos</a></li>
+        </ul>
+
+        <div class="back-to-admin">
+            <p><a href="{% url 'admin:index' %}">Voltar para o Painel do Admin</a></p>
+        </div>
+    </div>
+</body>
+</html>

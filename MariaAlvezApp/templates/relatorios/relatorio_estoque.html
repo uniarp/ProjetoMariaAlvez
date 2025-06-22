@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Estoque de Medicamentos</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
+        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; } /* dark color*/
+        form { margin-bottom: 20px; }
+        fieldset { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="date"], select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button.btn {
+            background-color: #006699; /* primary/info color*/
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button.btn:hover { background-color: #0056b3; } /* Um pouco mais escuro que o primary */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; } /* Um cinza claro */
+        tr:nth-child(even) { background-color: #f9f9f9; } /* Um cinza ainda mais claro para linhas pares */
+        p strong { font-weight: bold; }
+        .back-link { margin-top: 20px; }
+        .back-link a { color: #006699; text-decoration: none; } /* primary/info color*/
+        .back-link a:hover { text-decoration: underline; }
+        .status-vencido { color: #D64541; font-weight: bold; } /* danger color*/
+        .status-vencendo { color: #FFA726; font-weight: bold; } /* warning color*/
+        .status-ok { color: #4CAF50; } /* success color*/
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Estoque de Medicamentos</h1>
+
+        <form method="get">
+            <fieldset>
+                <legend>Filtrar Estoque</legend>
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </fieldset>
+        </form>
+
+        {% if estoque %}
+            <p><strong>Total de Lotes Encontrados:</strong> {{ estoque.count }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                        <th>Quantidade</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in estoque %}
+                    <tr>
+                        <td>{{ item.medicamento }}</td>
+                        <td>{{ item.lote }}</td>
+                        <td>{{ item.data_validade|date:"d/m/Y" }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>
+                            {% if item.data_validade < hoje %}
+                                <span class="status-vencido">VENCIDO</span>
+                            {% elif item.data_validade <= hoje|date:"Y-m-d"|add:"30 days" %}
+                                <span class="status-vencendo">VENCE EM BREVE</span>
+                            {% else %}
+                                <span class="status-ok">OK</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhum item de estoque encontrado com os filtros aplicados.</p>
+        {% endif %}
+
+        <div class="back-link">
+            <p><a href="{% url 'relatorios_index' %}">← Voltar para o Painel de Relatórios</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -514,3 +514,13 @@ class Exames(models.Model):
         if self.animal and self.tipo and self.data_exame:
             return f"Exame de {self.tipo} em {self.animal.nome} ({self.data_exame.strftime('%d/%m/%Y')})"
         return "Exame (sem dados completos)" # Mensagem de fallback, se algum campo for nulo (mas não devem ser com blank=False)
+    
+class RelatoriosGerais(models.Model):
+    class Meta:
+        managed = False  # Não cria tabela no banco de dados
+        verbose_name = "Relatório Geral"
+        verbose_name_plural = "Relatórios Gerais"
+        # Proxy = True  # Opcional, para permitir personalizar o admin sem afetar o modelo base
+        permissions = [
+            ("can_view_reports", "Can view general reports"),
+        ]

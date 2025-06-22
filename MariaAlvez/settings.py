@@ -104,6 +104,7 @@ JAZZMIN_SETTINGS = {
         "MariaAlvezApp.RegistroVacinacao": "fas fa-syringe",
         "MariaAlvezApp.RegistroVermifugos": "fas fa-pills",
         "MariaAlvezApp.Exames": "fas fa-vial",
+        "MariaAlvezApp.RelatoriosGerais": "fas fa-file",
     },
 }
 
