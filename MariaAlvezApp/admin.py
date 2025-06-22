@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, reverse
 from django.http import HttpResponseRedirect
+from django.utils import timezone 
 from django.utils.html import format_html
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
