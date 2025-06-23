@@ -71,8 +71,20 @@
                     {% for consulta in consultas %}
                     <tr>
                         <td>{{ consulta.data_atendimento|date:"d/m/Y H:i" }}</td>
-                        <td>{{ consulta.nome_vet_responsavel }}</td>
-                        <td>{{ consulta.nome_animal }}</td>
+                        <td>
+                            {% if consulta.veterinario %}
+                                {{ consulta.veterinario.nome }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if consulta.animal %}
+                                {{ consulta.animal.nome }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
                         <td>{{ consulta.tipo_atendimento }}</td>
                         <td>{{ consulta.diagnostico }}</td>
                     </tr>
