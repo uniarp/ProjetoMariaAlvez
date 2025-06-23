@@ -35,10 +35,9 @@ def relatorio_consultas(request):
         if data_fim:
             consultas = consultas.filter(data_atendimento__date__lte=data_fim)
         if animal_selecionado:
-            consultas = consultas.filter(nome_animal__icontains=animal_selecionado.nome)
+            consultas = consultas.filter(animal=animal_selecionado)
         elif tutor_selecionado:
-            nomes_animais = tutor_selecionado.agendamentos.values_list('animal__nome', flat=True).distinct()
-            consultas = consultas.filter(nome_animal__in=nomes_animais)
+            consultas = consultas.filter(animal__tutor=tutor_selecionado)
 
     return render(request, 'relatorios/relatorio_consultas.html', {
         'form': form,
