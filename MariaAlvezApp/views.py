@@ -3,10 +3,11 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta, date
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.admin.views.decorators import staff_member_required
 
 from .models import (
     ConsultaClinica, EstoqueMedicamento, RegistroVacinacao,
-    RegistroVermifugos, Tutor, Animal
+    RegistroVermifugos, Tutor, Animal, AgendamentoConsultas
 )
 from .forms import (
     FiltroConsultaForm, FiltroEstoqueForm,
@@ -183,4 +184,27 @@ def relatorio_vermifugos(request):
         'form': form,
         'vermifugos': vermifugos,
         'hoje': hoje # Passa a data atual para o template
+    })
+
+@staff_member_required
+def painel_gerencial(request):
+    from datetime import timedelta
+    from django.utils import timezone
+    from MariaAlvezApp.models import AgendamentoConsultas, EstoqueMedicamento, RegistroVacinacao, RegistroVermifugos
+    hoje = timezone.localdate()
+    semana_inicio = hoje - timedelta(days=hoje.weekday())
+    semana_fim = semana_inicio + timedelta(days=6)
+
+    agendamentos_hoje = AgendamentoConsultas.objects.filter(data_consulta__date=hoje)
+    agendamentos_semana = AgendamentoConsultas.objects.filter(data_consulta__date__gte=semana_inicio, data_consulta__date__lte=semana_fim)
+    medicamentos_vencer = EstoqueMedicamento.objects.filter(data_validade__gte=hoje, data_validade__lte=hoje+timedelta(days=30)).order_by('data_validade')
+    vacinas_hoje = RegistroVacinacao.objects.filter(data_revacinacao=hoje)
+    vermifugos_hoje = RegistroVermifugos.objects.filter(data_readministracao=hoje)
+
+    return render(request, 'painel_gerencial.html', {
+        'agendamentos_hoje': agendamentos_hoje,
+        'agendamentos_semana': agendamentos_semana,
+        'medicamentos_vencer': medicamentos_vencer,
+        'vacinas_hoje': vacinas_hoje,
+        'vermifugos_hoje': vermifugos_hoje,
     })
