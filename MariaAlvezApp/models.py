@@ -8,7 +8,8 @@ from django.utils.translation import gettext_lazy as _
 import re
 from django.utils import timezone
 from django.utils.timezone import localtime
-
+import requests
+from django.core.validators import RegexValidator
 
 # Classes principais (Sem alterações aqui)
 class Veterinario(models.Model):
@@ -39,40 +40,80 @@ def validar_telefone(telefone):
     telefone_numeros = re.sub(r'\D', '', telefone)
     if not re.fullmatch(r'\d{10,11}', telefone_numeros):
         raise ValidationError(_('Telefone inválido. Deve conter 10 ou 11 dígitos.'))
+    
+def validar_estado(estado):
+    ufs_validas = {
+        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT",
+        "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO",
+        "RR", "SC", "SP", "SE", "TO"
+    }
+    if estado.upper() not in ufs_validas:
+        raise ValidationError(_('Estado inválido. Informe uma sigla de UF válida.'))
+    
+def validar_cep(cep):
+    cep_numeros = re.sub(r'\D', '', cep)
+    if not re.fullmatch(r'\d{8}', cep_numeros):
+        raise ValidationError(_('CEP inválido. Deve conter 8 dígitos numéricos.'))
+    
+validador_cep = RegexValidator(
+    regex=r'^\d{8}$',
+    message='CEP inválido. Digite apenas 8 números, sem traços ou espaços.'
+)
+    
+def buscar_endereco_por_cep(cep):
+    cep = re.sub(r'\D', '', cep)
+    if len(cep) != 8:
+        raise ValidationError({'cep': _('CEP inválido. Deve conter 8 dígitos.')})
+
+    url = f'https://viacep.com.br/ws/{cep}/json/'
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if 'erro' in data:
+            raise ValidationError({'cep': _('CEP não encontrado.')})
+        return data
+    except requests.RequestException:
+        raise ValidationError({'cep': _('Erro ao buscar o endereço. Verifique sua conexão.')})
+    
 
 class Tutor(models.Model):
     nome = models.CharField(max_length=100, verbose_name="Nome")
     cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf], verbose_name="CPF")
     telefone = models.CharField(max_length=15, validators=[validar_telefone], verbose_name="Telefone")
     data_nascimento = models.DateField(verbose_name="Data de Nascimento")
+    cep = models.CharField(max_length=9, verbose_name="CEP")
     endereco = models.CharField(max_length=255, verbose_name="Endereço")
     cidade = models.CharField(max_length=100, verbose_name="Cidade")
-    estado = models.CharField(max_length=50, verbose_name="Estado")
-    cep = models.CharField(max_length=9, verbose_name="CEP")
+    estado = models.CharField(max_length=2, verbose_name="Estado")
 
     def clean(self):
-        self.validar_data_nascimento()
+        if self.data_nascimento:
+            self.validar_data_nascimento()
         self.aplicar_mascaras()
-        super().clean() 
+        self.validar_estado()
+        self.buscar_e_preencher_endereco()
+        super().clean()
 
     def validar_data_nascimento(self):
         hoje = date.today()
+        if not self.data_nascimento:
+            raise ValidationError({'data_nascimento': _('Data de nascimento inválida.')})
+
         limite_inferior = date(hoje.year - 120, hoje.month, hoje.day)
         idade_minima = hoje.replace(year=hoje.year - 16)
 
         if self.data_nascimento > hoje:
             raise ValidationError({'data_nascimento': _('A data de nascimento não pode estar no futuro.')})
-
         if self.data_nascimento < limite_inferior:
-            raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga. Deve estar nos últimos 120 anos.')})
-
+            raise ValidationError({'data_nascimento': _('A data de nascimento é muito antiga.')})
         if self.data_nascimento > idade_minima:
-            raise ValidationError({'data_nascimento': _('O tutor precisa ter no mínimo 16 anos para cadastro.')})
+            raise ValidationError({'data_nascimento': _('O tutor deve ter no mínimo 16 anos.')})
 
     def aplicar_mascaras(self):
-        cpf = re.sub(r'\D', '', self.cpf)
-        if len(cpf) == 11:
-            self.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        self.cpf = re.sub(r'\D', '', self.cpf)
+        if len(self.cpf) == 11:
+            self.cpf = f"{self.cpf[:3]}.{self.cpf[3:6]}.{self.cpf[6:9]}-{self.cpf[9:]}"
         
         tel = re.sub(r'\D', '', self.telefone)
         if len(tel) == 11:
@@ -84,12 +125,23 @@ class Tutor(models.Model):
         if len(cep) == 8:
             self.cep = f"{cep[:5]}-{cep[5:]}"
 
+    def validar_estado(self):
+        if not re.fullmatch(r'[A-Z]{2}', self.estado.upper()):
+            raise ValidationError({'estado': _('Estado inválido. Use a sigla com 2 letras, ex: SC.')})
+        self.estado = self.estado.upper()
+
+    def buscar_e_preencher_endereco(self):
+        dados = buscar_endereco_por_cep(self.cep)
+        self.endereco = f"{dados.get('logradouro', '')}, {dados.get('bairro', '')}".strip(', ')
+        self.cidade = dados.get('localidade', '')
+        self.estado = dados.get('uf', '')
+
     def __str__(self):
         return f"{self.nome} ({self.cpf})"
-    
+
     class Meta:
         verbose_name = "Tutor"
-        verbose_name_plural = "Tutores" 
+        verbose_name_plural = "Tutores"
     
 class Animal(models.Model):
     SEXO_CHOICES = [('M', 'Macho'), ('F', 'Fêmea')]
