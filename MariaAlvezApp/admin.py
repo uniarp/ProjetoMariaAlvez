@@ -6,6 +6,9 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone 
 from django.utils.html import format_html
 from django.utils import timezone 
+from django import forms
+import requests
+
 
 from .models import (
     Veterinario, Tutor, Animal, ConsultaClinica,
@@ -19,7 +22,43 @@ from .models import (
 
 # Registros
 admin.site.register(Veterinario)
-admin.site.register(Tutor)
+
+class TutorAdminForm(forms.ModelForm):
+    class Meta:
+        model = Tutor
+        fields = '__all__'
+
+    def clean_cep(self):
+        cep = self.cleaned_data.get('cep', '')
+        cep = cep.replace('-', '').strip()
+
+        if len(cep) != 8 or not cep.isdigit():
+            raise forms.ValidationError("Digite um CEP válido com 8 números (ex: 89506538).")
+
+        try:
+            response = requests.get(f"https://viacep.com.br/ws/{cep}/json/", timeout=3)
+            data = response.json()
+        except requests.RequestException:
+            raise forms.ValidationError("Erro ao consultar o CEP. Tente novamente.")
+
+        if data.get("erro"):
+            raise forms.ValidationError("CEP não encontrado.")
+
+        # opcional: preencher endereço, cidade e estado
+        self.cleaned_data['endereco'] = f"{data.get('logradouro', '')}, {data.get('bairro', '')}".strip(', ')
+        self.cleaned_data['cidade'] = data.get('localidade', '')
+        self.cleaned_data['estado'] = data.get('uf', '')
+
+        return cep
+
+class TutorAdmin(admin.ModelAdmin):
+    form = TutorAdminForm
+
+    class Media:
+        js = ('js/cep_lookup.js',)
+
+admin.site.register(Tutor, TutorAdmin)
+
 admin.site.register(Animal)
 admin.site.register(AgendamentoConsultas)
 
