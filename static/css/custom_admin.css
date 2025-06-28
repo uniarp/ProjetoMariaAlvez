@@ -64,3 +64,19 @@ body.jazzmin-login-page {
     }
 }
 
+.cep-button-wrapper {
+    margin-top: 15px; 
+    margin-bottom: 10px; 
+    display: block; 
+    text-align: left; 
+
+}
+
+.cep-lookup-btn {
+    padding: 8px 15px;
+    font-size: 14px;
+}
+
+.form-row .field-cep + .cep-button-wrapper {
+    clear: both;
+}

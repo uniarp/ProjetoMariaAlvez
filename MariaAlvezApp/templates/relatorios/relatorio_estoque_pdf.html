@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Estoque de Medicamentos PDF</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; color: #212529; }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        p strong { font-weight: bold; }
+        .status-vencido { color: #D64541; font-weight: bold; }
+        .status-vencendo { color: #FFA726; font-weight: bold; }
+        .status-ok { color: #4CAF50; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Estoque de Medicamentos</h1>
+
+        {% if estoque %}
+            <p><strong>Total de Lotes Encontrados:</strong> {{ total_lotes }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                        <th>Quantidade</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in estoque %}
+                    <tr>
+                        <td>{{ item.medicamento }}</td>
+                        <td>{{ item.lote }}</td>
+                        <td>{{ item.data_validade|date:"d/m/Y" }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>
+                            {% if item.data_validade < hoje %}
+                                <span class="status-vencido">VENCIDO</span>
+                            {% elif item.data_validade <= hoje|date:"Y-m-d"|add:"30 days" %}
+                                <span class="status-vencendo">VENCE EM BREVE</span>
+                            {% else %}
+                                <span class="status-ok">OK</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhum item de estoque encontrado com os filtros aplicados.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

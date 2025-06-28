@@ -1,3 +1,5 @@
+// seu_app/static/js/cep_lookup.js
+
 document.addEventListener('DOMContentLoaded', function () {
     const cepInput = document.querySelector('input[name="cep"]');
     if (!cepInput) return;
@@ -5,12 +7,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = 'Buscar endereço pelo CEP';
-    btn.style.marginLeft = '10px';
-    btn.classList.add('btn', 'btn-info');
+    btn.classList.add('btn', 'btn-info', 'cep-lookup-btn'); 
 
-    // Insere o botão após o campo de CEP
+
+    const buttonWrapper = document.createElement('div');
+    buttonWrapper.classList.add('cep-button-wrapper'); 
+    buttonWrapper.appendChild(btn);
+
     const cepFieldWrapper = cepInput.closest('.form-row') || cepInput.parentNode;
-    cepFieldWrapper.appendChild(btn);
+
+    if (cepInput.nextSibling) {
+        cepInput.parentNode.insertBefore(buttonWrapper, cepInput.nextSibling);
+    } else {
+        cepInput.parentNode.appendChild(buttonWrapper);
+    }
+
 
     btn.addEventListener('click', function () {
         const cep = cepInput.value.replace(/\D/g, '');

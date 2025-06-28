@@ -44,7 +44,6 @@ class TutorAdminForm(forms.ModelForm):
         if data.get("erro"):
             raise forms.ValidationError("CEP não encontrado.")
 
-        # opcional: preencher endereço, cidade e estado
         self.cleaned_data['endereco'] = f"{data.get('logradouro', '')}, {data.get('bairro', '')}".strip(', ')
         self.cleaned_data['cidade'] = data.get('localidade', '')
         self.cleaned_data['estado'] = data.get('uf', '')
@@ -56,7 +55,9 @@ class TutorAdmin(admin.ModelAdmin):
 
     class Media:
         js = ('js/cep_lookup.js',)
-
+        css = {
+            'all': ('admin/css/custom_admin.css',) # Adicione esta linha para carregar seu CSS
+        }
 admin.site.register(Tutor, TutorAdmin)
 
 admin.site.register(Animal)
