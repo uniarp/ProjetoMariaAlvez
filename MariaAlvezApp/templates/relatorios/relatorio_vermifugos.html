@@ -8,10 +8,11 @@
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
-        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
-        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; } /* dark color*/
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; }
+        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; }
         form { margin-bottom: 20px; }
         fieldset { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -24,7 +25,7 @@
             box-sizing: border-box;
         }
         button.btn {
-            background-color: #006699; /* primary/info color*/
+            background-color: #006699;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -32,19 +33,55 @@
             cursor: pointer;
             font-size: 16px;
         }
-        button.btn:hover { background-color: #0056b3; } /* Um pouco mais escuro que o primary */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
+        button.btn:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; } /* Um cinza claro */
-        tr:nth-child(even) { background-color: #f9f9f9; } /* Um cinza ainda mais claro para linhas pares */
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
         p strong { font-weight: bold; }
         .back-link { margin-top: 20px; }
-        .back-link a { color: #006699; text-decoration: none; } /* primary/info color*/
-        .back-link a:hover { text-decoration: underline; }
-        .status-atrasada { color: #D64541; font-weight: bold; } /* danger color*/
-        .status-vencendo { color: #FFA726; font-weight: bold; } /* warning color*/
-        .status-ok { color: #4CAF50; } /* success color*/
+        .status-atrasada { color: #D64541; font-weight: bold; }
+        .status-vencendo { color: #FFA726; font-weight: bold; }
+        .status-ok { color: #4CAF50; }
         .status-nao-definida { color: gray; }
+
+        .btn-pdf {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+            color: white !important;
+        }
+        .btn-pdf:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        .btn-pdf i {
+            margin-right: 8px;
+        }
+
+        .back-button-container {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .back-button-container a.btn.btn-primary {
+            color: white !important;
+            text-decoration: none !important;
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 4px;
+            background-color: #006699 !important;
+        }
+        .back-button-container a.btn.btn-primary:hover {
+            background-color: #0056b3 !important;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +98,13 @@
 
         {% if vermifugos %}
             <p><strong>Total de Registros Encontrados:</strong> {{ vermifugos.count }}</p>
+
+            <div style="text-align: right; margin-bottom: 15px;">
+                <a href="{% url 'relatorio_vermifugos_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf">
+                    <i class="fas fa-file-pdf"></i> Imprimir em PDF
+                </a>
+            </div>
+
             <table>
                 <thead>
                     <tr>
@@ -109,8 +153,10 @@
             <p>Nenhum registro de vermífugo encontrado com os filtros aplicados.</p>
         {% endif %}
 
-        <div class="back-link">
-            <p><a href="{% url 'relatorios_index' %}">← Voltar para o Painel de Relatórios</a></p>
+        <div class="back-button-container">
+            <a href="{% url 'relatorios_index' %}" class="btn btn-primary">
+                ← Voltar para o Painel de Relatórios
+            </a>
         </div>
     </div>
 </body>

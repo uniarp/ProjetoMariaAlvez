@@ -8,6 +8,9 @@
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <!-- Adiciona Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
         .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
@@ -39,8 +42,47 @@
         tr:nth-child(even) { background-color: #f9f9f9; } /* Um cinza ainda mais claro para linhas pares */
         p strong { font-weight: bold; }
         .back-link { margin-top: 20px; }
-        .back-link a { color: #006699; text-decoration: none; } /* primary/info color*/
-        .back-link a:hover { text-decoration: underline; }
+        
+        /* Estilos para o botão de PDF */
+        .btn-pdf {
+            display: inline-block; /* Permite espaçamento e alinhamento */
+            background-color: #28a745; /* Tom de verde para sucesso */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra para profundidade */
+            border: none; /* Remove borda padrão */
+            cursor: pointer; /* Indica que é clicável */
+            color: white !important; /* Adicionado para forçar a cor do texto a ser branca */
+        }
+        .btn-pdf:hover {
+            background-color: #218838; /* Um verde um pouco mais escuro ao passar o mouse */
+            transform: translateY(-2px); /* Efeito de "levantar" */
+        }
+        .btn-pdf i {
+            margin-right: 8px; /* Espaço entre o ícone e o texto */
+        }
+
+        /* Novo estilo para o container do botão "Voltar" */
+        .back-button-container {
+            text-align: left; /* Alinha o botão à esquerda dentro do container */
+            margin-top: 20px; /* Espaçamento superior */
+        }
+        /* Estilos mais específicos para o botão "Voltar" para garantir a cor de fundo e texto */
+        .back-button-container a.btn.btn-primary {
+            color: white !important; /* Garante texto branco */
+            text-decoration: none !important; /* Remove sublinhado */
+            display: inline-block; /* Comporta-se como bloco para padding */
+            padding: 10px 15px; /* Ajusta o padding */
+            border-radius: 4px; /* Cantos arredondados */
+            background-color: #006699 !important; /* Força a cor de fundo azul */
+        }
+        .back-button-container a.btn.btn-primary:hover {
+            background-color: #0056b3 !important; /* Força a cor de fundo no hover */
+        }
     </style>
 </head>
 <body>
@@ -57,6 +99,14 @@
 
         {% if consultas %}
             <p><strong>Total de Consultas:</strong> {{ consultas.count }}</p>
+
+            <!-- Botão de Imprimir PDF - Estilizado -->
+            <div style="text-align: right; margin-bottom: 15px;">
+                <a href="{% url 'relatorio_consultas_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf">
+                    <i class="fas fa-file-pdf"></i> Imprimir em PDF
+                </a>
+            </div>
+
             <table>
                 <thead>
                     <tr>
@@ -95,8 +145,11 @@
             <p>Nenhuma consulta encontrada com os filtros aplicados.</p>
         {% endif %}
 
-        <div class="back-link">
-            <p><a href="{% url 'relatorios_index' %}">← Voltar para o Painel de Relatórios</a></p>
+        <!-- O novo div para o botão "Voltar" -->
+        <div class="back-button-container">
+            <a href="{% url 'relatorios_index' %}" class="btn btn-primary">
+                ← Voltar para o Painel de Relatórios
+            </a>
         </div>
     </div>
 </body>

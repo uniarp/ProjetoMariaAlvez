@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* Copie AQUI os estilos relevantes do seu relatorio_consultas.html */
+        body { font-family: sans-serif; margin: 20px; color: #212529; }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        p strong { font-weight: bold; }
+        /* Seções como .back-link, botões, formulários devem ser REMOVIDOS para o PDF */
+        /* Se quiser usar os CSS do Django Admin, pode deixar os links <link rel="stylesheet"> aqui,
+           mas a view (como demonstrado no passo 2) precisará passá-los para WeasyPrint */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Consultas</h1>
+
+        {% if consultas %}
+            <p><strong>Total de Consultas:</strong> {{ total_consultas }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Veterinário</th>
+                        <th>Animal</th>
+                        <th>Tipo</th>
+                        <th>Diagnóstico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for consulta in consultas %}
+                    <tr>
+                        <td>{{ consulta.data_atendimento|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if consulta.veterinario %}
+                                {{ consulta.veterinario.nome }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if consulta.animal %}
+                                {{ consulta.animal.nome }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>{{ consulta.tipo_atendimento }}</td>
+                        <td>{{ consulta.diagnostico }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhuma consulta encontrada com os filtros aplicados.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

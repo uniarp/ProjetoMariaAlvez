@@ -22,13 +22,27 @@
             text-decoration: none;
             font-size: 1.1em;
             transition: background-color 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adicionado sombra para uniformidade */
         }
         a.report-link:hover {
             background-color: #0056b3; /* Um pouco mais escuro que o primary */
         }
         .back-to-admin { margin-top: 30px; text-align: center; }
-        .back-to-admin a { color: #006699; text-decoration: none; } /* primary/info color*/
-        .back-to-admin a:hover { text-decoration: underline; }
+
+        /* Estilos para o botão "Voltar" no index */
+        .back-to-admin a.btn.btn-primary { /* Mais específico para garantir que aplique */
+            color: white !important; /* Força a cor do texto a ser branca */
+            text-decoration: none !important; /* Remove o sublinhado padrão de links */
+            display: inline-block; /* Permite que padding e outras propriedades funcionem */
+            padding: 10px 15px; /* Mesmo padding dos botões .btn */
+            border-radius: 4px; /* Mesmo border-radius dos botões .btn */
+            background-color: #006699 !important; /* Força a cor de fundo azul */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adiciona sombra para consistência */
+            transition: background-color 0.3s ease; /* Transição para o hover */
+        }
+        .back-to-admin a.btn.btn-primary:hover {
+            background-color: #0056b3 !important; /* Cor no hover */
+        }
     </style>
 </head>
 <body>
@@ -43,7 +57,11 @@
         </ul>
 
         <div class="back-to-admin">
-            <p><a href="{% url 'admin:index' %}">Voltar</a></p>
+            <p>
+                <a href="{% url 'admin:index' %}" class="btn btn-primary">
+                    Voltar
+                </a>
+            </p>
         </div>
     </div>
 </body>
