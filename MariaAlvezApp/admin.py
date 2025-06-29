@@ -27,6 +27,9 @@ class TutorAdminForm(forms.ModelForm):
     class Meta:
         model = Tutor
         fields = '__all__'
+        widgets = {
+            'data_nascimento': forms.DateInput(attrs={'type': 'date'})
+        }
 
     def clean_cep(self):
         cep = self.cleaned_data.get('cep', '')
@@ -56,8 +59,9 @@ class TutorAdmin(admin.ModelAdmin):
     class Media:
         js = ('js/cep_lookup.js',)
         css = {
-            'all': ('admin/css/custom_admin.css',) # Adicione esta linha para carregar seu CSS
+            'all': ('admin/css/custom_admin.css',)
         }
+
 admin.site.register(Tutor, TutorAdmin)
 
 admin.site.register(Animal)
