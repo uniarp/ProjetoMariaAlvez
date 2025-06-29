@@ -1,0 +1,6 @@
+{% extends 'admin/base_site.html' %}
+{% load dashboard_tags %}
+{% block content %}
+    {% dashboard_cards %}
+    {{ block.super }}
+{% endblock %} 

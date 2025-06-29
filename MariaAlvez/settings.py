@@ -88,6 +88,7 @@ JAZZMIN_SETTINGS = {
     "custom_css": "css/custom_admin.css",
     "topmenu_links": [
         {"name": "Início", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Painel Gerencial", "url": "/admin/painel-gerencial/", "permissions": ["auth.view_user"]},
         {"model": "MariaAlvezApp.Tutor"},
         {"model": "MariaAlvezApp.Animal"},
     ],
