@@ -322,7 +322,19 @@ class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
     tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
-    
+    consulta_clinica = models.OneToOneField(
+        'ConsultaClinica',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='agendamento',
+        verbose_name="Consulta Clínica Relacionada"
+    )
+    para_castracao = models.BooleanField(
+        default=False,
+        verbose_name="Agendamento para Castração?",
+        help_text="Marque se este agendamento é para castração."
+    )
     def clean(self):
         super().clean()
         if self.data_consulta and self.data_consulta < timezone.now():
@@ -331,7 +343,8 @@ class AgendamentoConsultas(models.Model):
             raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
 
     class Meta:
-        verbose_name = "Agendamento de Consulta"; verbose_name_plural = "Agendamentos de Consultas"
+        verbose_name = "Agendamento de Consulta"; 
+        verbose_name_plural = "Agendamentos de Consultas"
         indexes = [models.Index(fields=['data_consulta'])]
 
     def __str__(self):
@@ -420,7 +433,7 @@ class Exames(models.Model):
         related_name='exames', 
         verbose_name="Consulta Associada",
         blank=True,
-        null=True # Permite que exames existam sem uma consulta (opcional)
+        null=True
     )
 
     # --- CAMPO ALTERADO ---
@@ -432,9 +445,9 @@ class Exames(models.Model):
         null=True
     )
 
-    nome = models.CharField(max_length=100, verbose_name="Nome do Exame")
+    nome = models.CharField(max_length=100, verbose_name="Nome do Exame",blank=True,null=True)
     descricao = models.TextField(verbose_name="Descrição do Exame", blank=True, null=True) # Permitir em branco
-    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame")
+    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame",blank=True,null=True)
     anexo = models.FileField(upload_to='exames/', blank=True, null=True, verbose_name="Anexo do Exame")
     data_exame = models.DateField(verbose_name="Data de Realização do Exame", default=timezone.now)
 
