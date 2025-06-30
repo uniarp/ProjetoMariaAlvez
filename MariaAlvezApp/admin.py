@@ -60,7 +60,6 @@ class TutorAdmin(admin.ModelAdmin):
         }
 admin.site.register(Tutor, TutorAdmin)
 
-admin.site.register(Animal)
 admin.site.register(AgendamentoConsultas)
 
 @admin.register(RelatoriosGerais)
@@ -167,3 +166,8 @@ class RegistroVermifugosAdmin(admin.ModelAdmin):
         if dias < 0: return format_html('<b style="color: red;">ATRASADA! ({} dias)</b>', abs(dias))
         elif dias <= 30: return format_html('<b style="color: orange;">Readministrar em {} dias</b>', dias)
         else: return format_html('<span style="color: green;">OK (Em {} dias)</span>', dias)
+
+@admin.register(Animal)
+class AnimalAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'especie')
+    search_fields = ['nome', 'especie']
