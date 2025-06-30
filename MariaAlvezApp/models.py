@@ -7,7 +7,7 @@ from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 import re
 from django.utils import timezone
-from django.utils.timezone import localtime
+from django.utils.timezone import localtime, now
 import requests
 from django.core.validators import RegexValidator
 
@@ -331,28 +331,44 @@ def gerar_horarios():
 
 HORARIOS_CHOICES = gerar_horarios()
 
+HORARIOS_CHOICES = gerar_horarios()
 class AgendamentoConsultas(models.Model):
-    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
+    data_consulta = models.DateField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
     horario = models.CharField(max_length=5, choices=HORARIOS_CHOICES, verbose_name="Horário da Consulta", default='06:00')
     tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
-    
+    consulta_clinica = models.OneToOneField(
+        'ConsultaClinica',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='agendamento',
+        verbose_name="Consulta Clínica Relacionada"
+    )
+    para_castracao = models.BooleanField(
+        default=False,
+        verbose_name="Agendamento para Castração?",
+        help_text="Marque se este agendamento é para castração."
+    )
+    # Linha '' (string vazia) removida daqui!
     def clean(self):
         super().clean()
-        if self.data_consulta and self.data_consulta < timezone.now():
+        if self.data_consulta and self.data_consulta < timezone.now().date():
             raise ValidationError({'data_consulta': "A data da consulta não pode estar no passado."})
-        if self.animal and self.data_consulta and AgendamentoConsultas.objects.filter(animal=self.animal, data_consulta=self.data_consulta).exclude(pk=self.pk).exists():
-            raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
+        if self.animal and self.data_consulta and self.horario and AgendamentoConsultas.objects.filter(animal=self.animal, data_consulta=self.data_consulta, horario=self.horario).exclude(pk=self.pk).exists():
+            raise ValidationError({'horario': "Já existe uma consulta agendada para este animal neste dia e horário."})
 
     class Meta:
-        verbose_name = "Agendamento de Consulta"; verbose_name_plural = "Agendamentos de Consultas"
+        verbose_name = "Agendamento de Consulta"
+        verbose_name_plural = "Agendamentos de Consultas"
         indexes = [models.Index(fields=['data_consulta'])]
 
     def __str__(self):
-        if self.animal and self.tutor and self.data_consulta:
-            return f"Consulta de {self.animal.nome} ({self.tutor.nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
+        if self.animal and self.tutor and self.data_consulta and self.horario:
+            data_formatada = self.data_consulta.strftime('%d/%m/%Y')
+            return f"Consulta de {self.animal.nome} ({self.tutor.nome}) - {data_formatada} às {self.horario}"
         return "Agendamento sem dados completos"
-
+    
 # Registros (Com os métodos delete já adicionados)
 class RegistroVacinacao(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
