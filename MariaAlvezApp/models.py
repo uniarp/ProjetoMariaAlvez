@@ -153,7 +153,7 @@ class Animal(models.Model):
     sexo = models.CharField(max_length=15, choices=SEXO_CHOICES, default="Sexo", verbose_name="Sexo")
     peso = models.DecimalField(default=0, max_digits=10, decimal_places=3, help_text="Peso em quilogramas", verbose_name="Peso (kg)")
     castrado = models.BooleanField(default=False, verbose_name="Castrado(a)")
-    rfid = models.CharField(max_length=128, unique=True, default="0", verbose_name="RFID") 
+    rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="0", verbose_name="RFID") 
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", blank=True, null=True, help_text="Selecione o tutor responsável por este animal.")
 
     def clean(self):
@@ -164,6 +164,9 @@ class Animal(models.Model):
             raise ValidationError({'peso': 'O peso deve ser maior que zero.'})
         self.nome = self.nome.strip().capitalize()
         self.especie = self.especie.strip().capitalize()
+        if self.rfid and not re.fullmatch(r"\d{15}", self.rfid.replace(" ", "")):
+            raise ValidationError({'rfid': 'O RFID deve conter exatamente 15 dígitos numéricos, seguindo o padrão ISO 11784/11785.'})
+
 
     def __str__(self):
         tutor_nome = self.tutor.nome if self.tutor else "Tutor não atribuído"
