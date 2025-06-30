@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'MariaAlvezApp',
     'Terceiros', 
+    'tempus_dominus',
 ]
 
 MIDDLEWARE = [
