@@ -318,8 +318,22 @@ class MedicamentoConsulta(models.Model):
             MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=self.quantidade_aplicada, observacao=f"Estorno de saída devido à remoção de medicamento da Consulta Clínica #{self.consulta.pk}.")
             super().delete(*args, **kwargs)
 
+def gerar_horarios():
+    horarios = []
+    inicio = datetime.strptime('06:00', '%H:%M')
+    fim = datetime.strptime('20:00', '%H:%M')
+    atual = inicio
+    while atual <= fim:
+        hora_str = atual.strftime('%H:%M')
+        horarios.append((hora_str, hora_str)) # (valor_salvo, texto_exibido)
+        atual += timedelta(minutes=15)
+    return horarios
+
+HORARIOS_CHOICES = gerar_horarios()
+
 class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
+    horario = models.CharField(max_length=5, choices=HORARIOS_CHOICES, verbose_name="Horário da Consulta", default='06:00')
     tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
     
