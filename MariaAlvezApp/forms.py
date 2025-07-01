@@ -57,3 +57,17 @@ class FiltroVermifugosForm(forms.Form):
         required=False,
         label="Medicamento/Lote"
     )
+
+class EstoqueMedicamentoForm(forms.ModelForm):
+    class Meta:
+        model = EstoqueMedicamento
+        fields = '__all__'
+
+    def clean_lote(self):
+        lote = self.cleaned_data['lote']
+        qs = EstoqueMedicamento.objects.filter(lote=lote)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("Este lote já está cadastrado para outro medicamento.")
+        return lote

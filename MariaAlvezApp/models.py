@@ -178,7 +178,24 @@ class Animal(models.Model):
 
 # Classes de gestão (Sem alterações aqui)
 class EstoqueMedicamento(models.Model):
-    medicamento = models.CharField("Medicamento", max_length=255)
+    VACINA = 'vacina'
+    VERMIFUGO = 'vermifugo'
+    MEDICAMENTO = 'medicamento'
+
+    TIPOS_MEDICAMENTO = [
+        (VACINA, 'Vacina'),
+        (VERMIFUGO, 'Vermífugo'),
+        (MEDICAMENTO, 'Medicamento'),
+    ]
+
+    medicamento = models.CharField("Medicamento", max_length=255, unique=True)  # Evita nomes duplicados
+    tipo_medicamento = models.CharField(
+        "Tipo de Medicamento",
+        max_length=20,
+        choices=TIPOS_MEDICAMENTO,
+        default=MEDICAMENTO,
+        help_text="Classifique o tipo do medicamento"
+    )
     lote = models.CharField("Lote", max_length=100, unique=True)
     data_validade = models.DateField("Data de Validade")
     quantidade = models.PositiveIntegerField("Quantidade em Estoque", default=0, editable=False)
@@ -192,9 +209,24 @@ class EstoqueMedicamento(models.Model):
         validade = self.data_validade.strftime('%d/%m/%Y')
         return f"{self.medicamento} - Lote: {self.lote} (Val: {validade}) | {self.quantidade} un."
 
+    def clean(self):
+        super().clean()
+
+        if self.data_validade and self.data_validade < timezone.now().date():
+            raise ValidationError({
+                'data_validade': "Não é possível cadastrar um medicamento com data de validade vencida."
+            })
+        if EstoqueMedicamento.objects.filter(
+            medicamento=self.medicamento
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError({
+                'medicamento': "Já existe um medicamento cadastrado com esse nome."
+            })
+
     def destaque_validade(self):
         if not self.data_validade:
             return format_html('<span style="color: gray;">Sem validade</span>')
+
         dias_para_vencer = (self.data_validade - timezone.now().date()).days
         if dias_para_vencer < 0:
             return format_html('<b style="color: red;">VENCIDO</b>')
@@ -202,6 +234,7 @@ class EstoqueMedicamento(models.Model):
             return format_html('<b style="color: orange;">Vence em {} dias</b>', dias_para_vencer)
         else:
             return format_html('<span style="color: green;">OK</span>')
+
     destaque_validade.short_description = "Status da Validade"
 
 class MovimentoEstoqueMedicamento(models.Model):

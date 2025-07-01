@@ -105,8 +105,8 @@ class ConsultaClinicaAdmin(admin.ModelAdmin):
 # --- CLASSE ATUALIZADA COM A LÓGICA SIMPLES ---
 @admin.register(EstoqueMedicamento)
 class EstoqueMedicamentoAdmin(admin.ModelAdmin):
-    list_display = ('medicamento', 'lote', 'quantidade', 'data_validade', 'destaque_validade')
-    readonly_fields = ('data_cadastro',)
+    list_display = ('medicamento', 'lote', 'quantidade', 'data_validade_formatada', 'destaque_validade')
+    readonly_fields = ('criado_em_formatado',)
 
     def get_queryset(self, request):
         """
@@ -115,6 +115,13 @@ class EstoqueMedicamentoAdmin(admin.ModelAdmin):
         """
         qs = super().get_queryset(request)
         return qs.filter(quantidade__gt=0)
+    def data_validade_formatada(self, obj):
+        return obj.data_validade.strftime('%d/%m/%Y')
+    data_validade_formatada.short_description = 'Validade'
+
+    def criado_em_formatado(self, obj):
+        return obj.criado_em.strftime('%d/%m/%Y %H:%M')
+    criado_em_formatado.short_description = 'Criado em'
 
 @admin.register(MovimentoEstoqueMedicamento)
 class MovimentoEstoqueMedicamentoAdmin(admin.ModelAdmin):
