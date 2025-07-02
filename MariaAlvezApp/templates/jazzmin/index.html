@@ -1,0 +1,6 @@
+{% extends 'jazzmin/base.html' %}
+{% load dashboard_tags %}
+{% block page_content %}
+    {% dashboard_cards %}
+    {{ block.super }}
+{% endblock %} 

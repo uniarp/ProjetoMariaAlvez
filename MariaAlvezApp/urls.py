@@ -8,6 +8,7 @@ from .views import (
     relatorio_vacinacao_pdf,
     relatorio_vermifugos_pdf
 )
+from . import views
 
 urlpatterns = [
     path('relatorios/', relatorios_index, name='relatorios_index'),
@@ -23,4 +24,5 @@ urlpatterns = [
 
     path('relatorios/vermifugos/', relatorio_vermifugos, name='relatorio_vermifugos'),
     path('relatorios/vermifugos/pdf/', relatorio_vermifugos_pdf, name='relatorio_vermifugos_pdf'),
+    path('admin/painel-gerencial/', views.painel_gerencial, name='painel_gerencial'),
 ]

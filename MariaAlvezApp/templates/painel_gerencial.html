@@ -1,0 +1,121 @@
+{% extends 'admin/base_site.html' %}
+{% block content %}
+<style>
+.painel-card {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 24px 12px 12px 12px;
+}
+.painel-numero {
+    font-size: 2.8rem;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+    text-align: center;
+}
+.painel-lista {
+    text-align: center;
+    margin-top: 10px;
+}
+</style>
+<div class="container-fluid" style="margin-top: 30px;">
+    <h1 class="text-center mb-4">Painel Gerencial</h1>
+    <div class="row">
+        <!-- Agendamentos do Dia -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-primary painel-card">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-calendar-check"></i> Agendamentos de Hoje</h5>
+                    <div class="painel-numero text-primary">{{ agendamentos_hoje.count }}</div>
+                    <div class="painel-lista">
+                        <ul class="list-unstyled">
+                            {% for ag in agendamentos_hoje|slice:':5' %}
+                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.tutor.nome }}) - {{ ag.data_consulta|date:'H:i' }}</li>
+                            {% empty %}
+                            <li>Nenhum agendamento hoje.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Vacinas do Dia -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-success painel-card">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-syringe"></i> Vacinas do Dia</h5>
+                    <div class="painel-numero text-success">{{ vacinas_hoje.count }}</div>
+                    <div class="painel-lista">
+                        <ul class="list-unstyled">
+                            {% for vac in vacinas_hoje|slice:':5' %}
+                            <li><b>{{ vac.animal.nome }}</b> ({{ vac.animal.tutor.nome }})</li>
+                            {% empty %}
+                            <li>Nenhuma vacina hoje.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Vermífugos do Dia -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-warning painel-card">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-pills"></i> Vermífugos do Dia</h5>
+                    <div class="painel-numero text-warning">{{ vermifugos_hoje.count }}</div>
+                    <div class="painel-lista">
+                        <ul class="list-unstyled">
+                            {% for verm in vermifugos_hoje|slice:':5' %}
+                            <li><b>{{ verm.animal.nome }}</b> ({{ verm.animal.tutor.nome }})</li>
+                            {% empty %}
+                            <li>Nenhum vermífugo hoje.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Medicamentos a vencer -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-danger painel-card">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-capsules"></i> Medicamentos a Vencer (30 dias)</h5>
+                    <div class="painel-numero text-danger">{{ medicamentos_vencer.count }}</div>
+                    <div class="painel-lista">
+                        <ul class="list-unstyled">
+                            {% for med in medicamentos_vencer|slice:':5' %}
+                            <li><b>{{ med.medicamento }}</b> (Lote: {{ med.lote }}) - Vence {{ med.data_validade|date:'d/m/Y' }}</li>
+                            {% empty %}
+                            <li>Nenhum medicamento a vencer.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Agendamentos da Semana -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm border-info painel-card">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-calendar-week"></i> Agendamentos na Semana</h5>
+                    <div class="painel-numero text-info">{{ agendamentos_semana.count }}</div>
+                    <div class="painel-lista">
+                        <ul class="list-unstyled">
+                            {% for ag in agendamentos_semana|slice:':5' %}
+                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.tutor.nome }}) - {{ ag.data_consulta|date:'d/m/Y H:i' }}</li>
+                            {% empty %}
+                            <li>Nenhum agendamento na semana.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+{% endblock %} 
