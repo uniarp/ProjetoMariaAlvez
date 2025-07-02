@@ -419,9 +419,6 @@ def relatorio_vermifugos_pdf(request):
     response['Content-Disposition'] = 'attachment; filename="relatorio_vermifugos.pdf"'
     return response
 
-        'hoje': hoje # Passa a data atual para o template
-    })
-
 @staff_member_required
 def painel_gerencial(request):
     from datetime import timedelta
