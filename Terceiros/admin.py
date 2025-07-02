@@ -1,5 +1,5 @@
 from django.contrib import admin
-from terceiros.models import EmpresaTerceirizada, RegistroServico
+from Terceiros.models import EmpresaTerceirizada, RegistroServico
 
 @admin.register(EmpresaTerceirizada)
 class EmpresaTerceirizadaAdmin(admin.ModelAdmin):
