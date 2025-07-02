@@ -18,7 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'MariaAlvezApp',
-    'terceiros', 
+    'Terceiros', 
 ]
 
 MIDDLEWARE = [
