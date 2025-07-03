@@ -355,6 +355,18 @@ class ConsultaClinica(models.Model):
         verbose_name_plural = "Consultas Clínicas"
         ordering = ['-data_atendimento']
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.animal and self.peso is not None:
+            try:
+                animal_para_atualizar = Animal.objects.get(pk=self.animal.pk)
+            except Animal.DoesNotExist:
+                return 
+
+            if animal_para_atualizar.peso != self.peso:
+                animal_para_atualizar.peso = self.peso
+                animal_para_atualizar.save(update_fields=['peso'])
+
     def __str__(self):
         animal_info = self.animal.nome if self.animal else 'N/A'
         vet_info = self.veterinario.nome if self.veterinario else 'N/A'
@@ -416,7 +428,14 @@ class MedicamentoConsulta(models.Model):
 
 class RegistroVacinacao(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
-    medicamento_aplicado = models.ForeignKey('EstoqueMedicamento', on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Medicamento/Lote Aplicado")
+    medicamento_aplicado = models.ForeignKey(
+        'EstoqueMedicamento',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Medicamento/Lote Aplicado",
+        limit_choices_to={'tipo_medicamento': EstoqueMedicamento.VACINA}
+    )
     data_aplicacao = models.DateField(verbose_name="Data de Aplicação", blank=True, null=True)
     data_revacinacao = models.DateField(verbose_name="Data Revacinação", blank=True, null=True)
     
@@ -465,7 +484,14 @@ class RegistroVacinacao(models.Model):
 
 class RegistroVermifugos(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
-    medicamento_administrado = models.ForeignKey('EstoqueMedicamento', on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Vermífugo/Lote Administrado")
+    medicamento_administrado = models.ForeignKey(
+        'EstoqueMedicamento',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Vermífugo/Lote Administrado",
+        limit_choices_to={'tipo_medicamento': EstoqueMedicamento.VERMIFUGO}
+    )
     data_administracao = models.DateField(verbose_name="Data de Administração", blank=True, null=True)
     data_readministracao = models.DateField(verbose_name="Data Readministração", blank=True, null=True)
     
@@ -532,9 +558,9 @@ class Exames(models.Model):
         null=True
     )
 
-    nome = models.CharField(max_length=100, verbose_name="Nome do Exame")
+    nome = models.CharField(max_length=100, verbose_name="Nome do Exame", blank=True, null=True)
     descricao = models.TextField(verbose_name="Descrição do Exame", blank=True, null=True)
-    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame")
+    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame", blank=True, null=True)
     anexo = models.FileField(upload_to='exames/', blank=True, null=True, verbose_name="Anexo do Exame")
     data_exame = models.DateField(verbose_name="Data de Realização do Exame", default=timezone.now)
 
