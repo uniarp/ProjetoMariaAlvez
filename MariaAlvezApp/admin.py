@@ -60,10 +60,25 @@ admin.site.register(Tutor, TutorAdmin)
 
 @admin.register(AgendamentoConsultas)
 class AgendamentoConsultasAdmin(admin.ModelAdmin):
-    list_display = ('animal', 'tutor', 'data_consulta', 'consulta_associada_link')
-    list_filter = ('data_consulta', 'tutor', 'animal')
-    search_fields = ('animal__nome', 'tutor__nome')
+    # Alterado list_display para usar 'get_tutor_display'
+    list_display = ('animal', 'get_tutor_display', 'data_consulta', 'consulta_associada_link')
+    # Alterado list_filter para usar 'animal__tutor'
+    list_filter = ('data_consulta', 'animal__tutor', 'animal')
+    # Alterado search_fields para incluir 'animal__tutor__nome'
+    search_fields = ('animal__nome', 'animal__tutor__nome')
     date_hierarchy = 'data_consulta'
+
+    # Adicione este bloco Media para carregar o CSS personalizado (se você quiser esconder "Hoje" e "Agora")
+    class Media:
+        css = {
+            'all': ('admin/css/hide_datetime_buttons.css',) # Certifique-se de que este arquivo CSS existe com as regras para esconder os botões
+        }
+
+    # Novo método para exibir o nome do tutor do animal
+    @admin.display(description="Tutor")
+    def get_tutor_display(self, obj):
+        return obj.animal.tutor.nome if obj.animal and obj.animal.tutor else "N/A"
+    get_tutor_display.admin_order_field = 'animal__tutor__nome' # Permite ordenar por tutor
 
     @admin.display(description="Consulta Associada")
     def consulta_associada_link(self, obj):
