@@ -353,26 +353,46 @@ class MedicamentoConsulta(models.Model):
         with transaction.atomic():
             MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=self.quantidade_aplicada, observacao=f"Estorno de saída devido à remoção de medicamento da Consulta Clínica #{self.consulta.pk}.")
             super().delete(*args, **kwargs)
+def gerar_horarios():
+    horarios = []
+    inicio = datetime.strptime('06:00', '%H:%M')
+    fim = datetime.strptime('20:00', '%H:%M')
+    atual = inicio
+    while atual <= fim:
+        hora_str = atual.strftime('%H:%M')
+        horarios.append((hora_str, hora_str)) # (valor_salvo, texto_exibido)
+        atual += timedelta(minutes=15)
+    return horarios
 
+HORARIOS_CHOICES = gerar_horarios()
 class AgendamentoConsultas(models.Model):
-    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
+    data_consulta = models.DateField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
+    horario = models.CharField(max_length=5, choices=HORARIOS_CHOICES, verbose_name="Horário da Consulta", default='06:00')
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
     
     def clean(self):
         super().clean()
-        if self.data_consulta and self.data_consulta < timezone.now():
+        hoje = timezone.now().date()
+
+        if self.data_consulta and self.data_consulta < hoje:
             raise ValidationError({'data_consulta': "A data da consulta não pode estar no passado."})
-        if self.animal and self.data_consulta and AgendamentoConsultas.objects.filter(animal=self.animal, data_consulta=self.data_consulta).exclude(pk=self.pk).exists():
-            raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
+
+        if self.animal and self.data_consulta:
+            conflito = AgendamentoConsultas.objects.filter(
+                animal=self.animal,
+                data_consulta=self.data_consulta
+            ).exclude(pk=self.pk).exists()
+
+            if conflito:
+                raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
 
     class Meta:
         verbose_name = "Agendamento de Consulta"; verbose_name_plural = "Agendamentos de Consultas"
         indexes = [models.Index(fields=['data_consulta'])]
 
     def __str__(self):
-        if self.animal and self.tutor and self.data_consulta:
-            return f"Consulta de {self.animal.nome} ({self.tutor.nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
+        if self.animal and self.data_consulta:
+            return f"Consulta de {self.animal.nome} - {self.data_consulta.strftime('%d/%m/%Y')} às {self.horario}"
         return "Agendamento sem dados completos"
 
 # Registros (Com os métodos delete já adicionados)
@@ -468,9 +488,9 @@ class Exames(models.Model):
         null=True
     )
 
-    nome = models.CharField(max_length=100, verbose_name="Nome do Exame")
+    nome = models.CharField(max_length=100, verbose_name="Nome do Exame",blank=True, null=True)
     descricao = models.TextField(verbose_name="Descrição do Exame", blank=True, null=True) # Permitir em branco
-    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame")
+    tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame",blank=True, null=True)
     anexo = models.FileField(upload_to='exames/', blank=True, null=True, verbose_name="Anexo do Exame")
     data_exame = models.DateField(verbose_name="Data de Realização do Exame", default=timezone.now)
 
