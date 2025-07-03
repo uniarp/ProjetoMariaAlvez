@@ -101,7 +101,7 @@ class AgendamentoConsultasForm(forms.ModelForm):
 
     class Meta:
         model = AgendamentoConsultas
-        fields = ['animal', 'data_consulta_date', 'hora_consulta']
+        fields = ['animal', 'data_consulta_date', 'hora_consulta', 'is_castracao']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -180,3 +180,9 @@ class FiltroRegistroServicoForm(forms.Form):
     data_inicio = forms.DateField(label="Data Início", required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     data_fim = forms.DateField(label="Data Fim", required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     busca_texto = forms.CharField(label="Buscar em Descrição/Medicamentos", required=False, max_length=255)
+
+class FiltroFilaCastracaoForm(forms.Form):
+    animal = forms.ModelChoiceField(queryset=Animal.objects.all(), required=False, label="Animal")
+    tutor = forms.ModelChoiceField(queryset=Tutor.objects.all(), required=False, label="Tutor")
+    data_inicio = forms.DateField(label="Agendamento De", required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    data_fim = forms.DateField(label="Agendamento Até", required=False, widget=forms.DateInput(attrs={'type': 'date'}))
