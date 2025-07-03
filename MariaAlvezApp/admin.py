@@ -101,12 +101,12 @@ class RelatoriosGeraisAdmin(admin.ModelAdmin):
 
 class MedicamentoConsultaInline(admin.TabularInline):
     model = MedicamentoConsulta
-    extra = 1 
+    extra = 0
     fields = ['medicamento_estoque', 'quantidade_aplicada']
 
 class ExameInline(admin.TabularInline):
     model = Exames
-    extra = 1
+    extra = 0
     fields = ('nome', 'tipo', 'anexo', 'descricao', 'data_exame')
 
 @admin.register(ConsultaClinica)
