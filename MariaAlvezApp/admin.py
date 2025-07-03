@@ -156,9 +156,6 @@ class EstoqueMedicamentoAdmin(admin.ModelAdmin):
         return obj.data_validade.strftime('%d/%m/%Y')
     data_validade_formatada.short_description = 'Validade'
 
-    def has_add_permission(self, request):
-        return False
-
 @admin.register(MovimentoEstoqueMedicamento)
 class MovimentoEstoqueMedicamentoAdmin(admin.ModelAdmin):
     list_display = ('estoque_item', 'tipo', 'quantidade', 'data', 'observacao')
