@@ -151,7 +151,7 @@ class Animal(models.Model):
     peso = models.DecimalField(default=0, max_digits=10, decimal_places=3, help_text="Peso em quilogramas", verbose_name="Peso (kg)")
     castrado = models.BooleanField(default=False, verbose_name="Castrado(a)", help_text="Marque se o animal for castrado")
     rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="0", verbose_name="RFID", help_text="RFID segue padrão ISO 11784/11785 EXEMPLOS: 985 112003456789") 
-    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", blank=True, null=True, help_text="Selecione o tutor responsável por este animal.")
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", help_text="Selecione o tutor responsável por este animal.")
 
     def clean(self):
         super().clean()
@@ -277,25 +277,11 @@ class MovimentoEstoqueMedicamento(models.Model):
 
 class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
-    # Removido o campo 'tutor' diretamente
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal", help_text="Selecione o Animal para agendamento!")
-    
-    def clean(self):
+    def clean(self): #
         super().clean()
-        if self.data_consulta:
-            if self.data_consulta < timezone.now():
-                raise ValidationError({'data_consulta': "A data da consulta não pode estar no passado."})
-
-            # Validação: impede agendamentos duplicados para o MESMO animal no MESMO horário.
-            # A lógica de 15 em 15 minutos para TODOS os agendamentos foi revertida.
-            if self.animal and self.data_consulta and AgendamentoConsultas.objects.filter(
-                animal=self.animal,
-                data_consulta=self.data_consulta
-            ).exclude(pk=self.pk).exists():
-                raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
-        else:
-            raise ValidationError({'data_consulta': "A data da consulta não pode ser vazia."})
-
+        # Validações de data no passado e duplicidade movidas para o formulário (forms.py)
+        pass #
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -320,7 +306,6 @@ class AgendamentoConsultas(models.Model):
         indexes = [models.Index(fields=['data_consulta'])]
 
     def __str__(self):
-        # Acessa o tutor através do animal
         tutor_nome = self.animal.tutor.nome if self.animal and self.animal.tutor else 'N/A'
         if self.animal and self.data_consulta:
             return f"Consulta de {self.animal.nome} (Tutor: {tutor_nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"

@@ -8,40 +8,39 @@
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; } /* body-bg e text-color*/
-        .container { max-width: 900px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } /* light color*/
-        h1 { color: #2f2f2f; text-align: center; margin-bottom: 30px; } /* dark color*/
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; }
+        .container { max-width: 900px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 30px; }
         ul { list-style: none; padding: 0; }
         li { margin-bottom: 15px; }
         a.report-link {
             display: block;
-            background-color: #006699; /* primary/info color*/
+            background-color: #006699;
             color: white;
             padding: 15px 20px;
             border-radius: 5px;
             text-decoration: none;
             font-size: 1.1em;
             transition: background-color 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adicionado sombra para uniformidade */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         a.report-link:hover {
-            background-color: #0056b3; /* Um pouco mais escuro que o primary */
+            background-color: #0056b3;
         }
         .back-to-admin { margin-top: 30px; text-align: center; }
 
-        /* Estilos para o botão "Voltar" no index */
-        .back-to-admin a.btn.btn-primary { /* Mais específico para garantir que aplique */
-            color: white !important; /* Força a cor do texto a ser branca */
-            text-decoration: none !important; /* Remove o sublinhado padrão de links */
-            display: inline-block; /* Permite que padding e outras propriedades funcionem */
-            padding: 10px 15px; /* Mesmo padding dos botões .btn */
-            border-radius: 4px; /* Mesmo border-radius dos botões .btn */
-            background-color: #006699 !important; /* Força a cor de fundo azul */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Adiciona sombra para consistência */
-            transition: background-color 0.3s ease; /* Transição para o hover */
+        .back-to-admin a.btn.btn-primary { 
+            color: white !important; 
+            text-decoration: none !important; 
+            display: inline-block; 
+            padding: 10px 15px; 
+            border-radius: 4px; 
+            background-color: #006699 !important; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            transition: background-color 0.3s ease; 
         }
         .back-to-admin a.btn.btn-primary:hover {
-            background-color: #0056b3 !important; /* Cor no hover */
+            background-color: #0056b3 !important; 
         }
     </style>
 </head>
@@ -54,6 +53,7 @@
             <li><a href="{% url 'relatorio_estoque' %}" class="report-link">📦 Relatório de Estoque de Medicamentos</a></li>
             <li><a href="{% url 'relatorio_vacinacao' %}" class="report-link">💉 Relatório de Controle de Vacinas</a></li>
             <li><a href="{% url 'relatorio_vermifugos' %}" class="report-link">💊 Relatório de Controle de Vermífugos</a></li>
+            <li><a href="{% url 'relatorio_servicos' %}" class="report-link">🛠️ Relatório de Serviços Terceirizados</a></li>
         </ul>
 
         <div class="back-to-admin">

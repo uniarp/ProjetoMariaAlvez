@@ -14,6 +14,8 @@ from .models import (
     RelatoriosGerais,
     MedicamentoConsulta 
 )
+# Importe o NOVO formulário de agendamento
+from .forms import AgendamentoConsultasForm 
 
 admin.site.register(Veterinario)
 
@@ -60,6 +62,8 @@ admin.site.register(Tutor, TutorAdmin)
 
 @admin.register(AgendamentoConsultas)
 class AgendamentoConsultasAdmin(admin.ModelAdmin):
+    # Use o formulário personalizado aqui
+    form = AgendamentoConsultasForm 
     # Alterado list_display para usar 'get_tutor_display'
     list_display = ('animal', 'get_tutor_display', 'data_consulta', 'consulta_associada_link')
     # Alterado list_filter para usar 'animal__tutor'
@@ -68,11 +72,11 @@ class AgendamentoConsultasAdmin(admin.ModelAdmin):
     search_fields = ('animal__nome', 'animal__tutor__nome')
     date_hierarchy = 'data_consulta'
 
-    # Adicione este bloco Media para carregar o CSS personalizado (se você quiser esconder "Hoje" e "Agora")
-    class Media:
-        css = {
-            'all': ('admin/css/hide_datetime_buttons.css',) # Certifique-se de que este arquivo CSS existe com as regras para esconder os botões
-        }
+    # REMOVIDO: o bloco Media que escondia os botões.
+    # class Media:
+    #     css = {
+    #         'all': ('admin/css/hide_datetime_buttons.css',)
+    #     }
 
     # Novo método para exibir o nome do tutor do animal
     @admin.display(description="Tutor")
