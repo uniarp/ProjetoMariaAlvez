@@ -276,7 +276,7 @@ class MovimentoEstoqueMedicamento(models.Model):
             super().delete(*args, **kwargs)
 
 class AgendamentoConsultas(models.Model):
-    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
+    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True, help_text="Escolha a data da consulta!")
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal", help_text="Selecione o Animal para agendamento!")
     is_castracao = models.BooleanField(default=False, verbose_name="Agendamento para Castração?", help_text="Marque se este agendamento for para um procedimento de castração.") 
 
