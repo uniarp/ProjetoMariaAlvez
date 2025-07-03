@@ -2,12 +2,14 @@ from django.urls import path
 from .views import (
     relatorios_index, relatorio_consultas,
     relatorio_estoque, relatorio_vacinacao,
-    relatorio_vermifugos, relatorio_servicos, #
+    relatorio_vermifugos, relatorio_servicos, 
+    relatorio_fila_castracao,
     relatorio_consultas_pdf,
     relatorio_estoque_pdf,
     relatorio_vacinacao_pdf,
     relatorio_vermifugos_pdf,
-    relatorio_servicos_pdf #
+    relatorio_servicos_pdf,
+    relatorio_fila_castracao_pdf 
 )
 from . import views
 
@@ -26,9 +28,11 @@ urlpatterns = [
     path('relatorios/vermifugos/', relatorio_vermifugos, name='relatorio_vermifugos'),
     path('relatorios/vermifugos/pdf/', relatorio_vermifugos_pdf, name='relatorio_vermifugos_pdf'),
     
-    # NOVAS URLs PARA RELATÓRIO DE SERVIÇOS
     path('relatorios/servicos/', relatorio_servicos, name='relatorio_servicos'),
     path('relatorios/servicos/pdf/', relatorio_servicos_pdf, name='relatorio_servicos_pdf'),
+
+    path('relatorios/fila-castracao/', relatorio_fila_castracao, name='relatorio_fila_castracao'),
+    path('relatorios/fila-castracao/pdf/', relatorio_fila_castracao_pdf, name='relatorio_fila_castracao_pdf'),
 
     path('admin/painel-gerencial/', views.painel_gerencial, name='painel_gerencial'),
 ]

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Fila de Castração PDF</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; color: #212529; }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        p strong { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Fila de Castração</h1>
+
+        {% if fila_castracao %}
+            <p><strong>Total de Agendamentos para Castração:</strong> {{ total_registros }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data e Hora</th>
+                        <th>Animal</th>
+                        <th>Tutor</th>
+                        <th>Espécie</th>
+                        <th>Sexo</th>
+                        <th>Castrado (Animal)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agendamento in fila_castracao %}
+                    <tr>
+                        <td>{{ agendamento.data_consulta|date:"d/m/Y H:i" }}</td>
+                        <td>{{ agendamento.animal.nome }}</td>
+                        <td>{{ agendamento.animal.tutor.nome }}</td>
+                        <td>{{ agendamento.animal.especie }}</td>
+                        <td>{{ agendamento.animal.get_sexo_display }}</td>
+                        <td>
+                            {% if agendamento.animal.castrado %}
+                                Sim
+                            {% else %}
+                                Não
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhum agendamento para castração encontrado com os filtros aplicados.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

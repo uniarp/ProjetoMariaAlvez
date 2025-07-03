@@ -278,10 +278,11 @@ class MovimentoEstoqueMedicamento(models.Model):
 class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal", help_text="Selecione o Animal para agendamento!")
-    def clean(self): #
+    is_castracao = models.BooleanField(default=False, verbose_name="Agendamento para Castração?", help_text="Marque se este agendamento for para um procedimento de castração.") 
+
+    def clean(self): 
         super().clean()
-        # Validações de data no passado e duplicidade movidas para o formulário (forms.py)
-        pass #
+        pass 
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -307,10 +308,11 @@ class AgendamentoConsultas(models.Model):
 
     def __str__(self):
         tutor_nome = self.animal.tutor.nome if self.animal and self.animal.tutor else 'N/A'
+        tipo_agendamento = "Castração" if self.is_castracao else "Consulta"
         if self.animal and self.data_consulta:
-            return f"Consulta de {self.animal.nome} (Tutor: {tutor_nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
+            return f"{tipo_agendamento} para {self.animal.nome} (Tutor: {tutor_nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
         return "Agendamento sem dados completos"
-
+    
 class ConsultaClinica(models.Model):
     data_atendimento = models.DateTimeField(default=timezone.now, help_text="Data e hora da consulta")
     tipo_atendimento = models.CharField(max_length=100, blank=True, null=True, help_text="Tipo de atendimento (ex: Rotina, Emergência)")

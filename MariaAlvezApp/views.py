@@ -10,11 +10,11 @@ from datetime import timedelta, datetime
 # Importar modelos e formulários do próprio MariaAlvezApp
 from .models import (
     AgendamentoConsultas, ConsultaClinica, EstoqueMedicamento,
-    RegistroVacinacao, RegistroVermifugos,
+    RegistroVacinacao, RegistroVermifugos, Animal, Tutor
 )
 from .forms import (
     FiltroConsultaForm, FiltroEstoqueForm, FiltroVacinacaoForm,
-    FiltroVermifugosForm, FiltroRegistroServicoForm 
+    FiltroVermifugosForm, FiltroRegistroServicoForm, FiltroFilaCastracaoForm
 )
 
 # Importar modelos do app Terceiros
@@ -430,25 +430,83 @@ def relatorio_servicos_pdf(request):
     response['Content-Disposition'] = 'inline; filename="relatorio_servicos.pdf"'
     return response
 
+
+def relatorio_fila_castracao(request):
+    form = FiltroFilaCastracaoForm(request.GET)
+    # Filtra apenas agendamentos que são marcados como castração
+    fila_castracao = AgendamentoConsultas.objects.filter(is_castracao=True).order_by('data_consulta')
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        tutor = form.cleaned_data.get('tutor')
+        data_inicio = form.cleaned_data.get('data_inicio')
+        data_fim = form.cleaned_data.get('data_fim')
+
+        if animal:
+            fila_castracao = fila_castracao.filter(animal=animal)
+        if tutor:
+            fila_castracao = fila_castracao.filter(animal__tutor=tutor)
+        if data_inicio:
+            fila_castracao = fila_castracao.filter(data_consulta__date__gte=data_inicio)
+        if data_fim:
+            fila_castracao = fila_castracao.filter(data_consulta__date__lte=data_fim)
+
+    context = {'fila_castracao': fila_castracao, 'form': form}
+    return render(request, 'relatorios/relatorio_fila_castracao.html', context)
+
+def relatorio_fila_castracao_pdf(request):
+    form = FiltroFilaCastracaoForm(request.GET)
+    fila_castracao = AgendamentoConsultas.objects.filter(is_castracao=True).order_by('data_consulta')
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        tutor = form.cleaned_data.get('tutor')
+        data_inicio = form.cleaned_data.get('data_inicio')
+        data_fim = form.cleaned_data.get('data_fim')
+
+        if animal:
+            fila_castracao = fila_castracao.filter(animal=animal)
+        if tutor:
+            fila_castracao = fila_castracao.filter(animal__tutor=tutor)
+        if data_inicio:
+            fila_castracao = fila_castracao.filter(data_consulta__date__gte=data_inicio)
+        if data_fim:
+            fila_castracao = fila_castracao.filter(data_consulta__date__lte=data_fim)
+            
+    template = get_template('relatorios/relatorio_fila_castracao_pdf.html')
+    html = template.render({'fila_castracao': fila_castracao, 'total_registros': fila_castracao.count()})
+    
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
+
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="relatorio_fila_castracao.pdf"'
+    return response
+
+
 def painel_gerencial(request):
     hoje = timezone.localdate()
+    
+    # Agendamentos de HOJE: Filtrar EXATAMENTE para hoje
     agendamentos_hoje_qs = AgendamentoConsultas.objects.filter(data_consulta__date=hoje).order_by('data_consulta')
     
-    # Medicamentos vencendo em 30 dias ou vencidos
+    # Vacinas do Dia: Filtrar para revacinações que vencem EXATAMENTE hoje
+    vacinas_hoje_qs = RegistroVacinacao.objects.filter(data_revacinacao=hoje).order_by('data_revacinacao')
+
+    # Vermífugos do Dia: Filtrar para readministrações que vencem EXATAMENTE hoje
+    vermifugos_hoje_qs = RegistroVermifugos.objects.filter(data_readministracao=hoje).order_by('data_readministracao')
+
+    # Medicamentos a Vencer (30 dias ou vencidos) - Esta lógica parece estar correta para o objetivo
     data_limite_vencimento = hoje + timedelta(days=30)
     medicamentos_criticos_qs = EstoqueMedicamento.objects.filter(data_validade__lte=data_limite_vencimento).exclude(quantidade=0).order_by('data_validade')
 
-    # Vacinações com revacinação hoje ou atrasadas
-    vacinacoes_pendentes_qs = RegistroVacinacao.objects.filter(
-        data_revacinacao__lte=hoje
-    ).exclude(data_revacinacao__isnull=True).order_by('data_revacinacao')
-
-    # Vermifugações com readministração hoje ou atrasadas
-    vermifugacoes_pendentes_qs = RegistroVermifugos.objects.filter(
-        data_readministracao__lte=hoje
-    ).exclude(data_readministracao__isnull=True).order_by('data_readministracao')
-
-    # Lógica para Agendamentos na Semana
+    # Agendamentos da Semana: Filtrar da segunda-feira desta semana até o domingo
     dia_semana_atual = hoje.weekday() # 0 = segunda, 6 = domingo
     inicio_semana = hoje - timedelta(days=dia_semana_atual)
     fim_semana = inicio_semana + timedelta(days=6)
@@ -458,11 +516,11 @@ def painel_gerencial(request):
     ).order_by('data_consulta')
 
     context = {
-        'agendamentos_hoje': agendamentos_hoje_qs, # Renomeado para template
-        'vacinas_hoje': vacinacoes_pendentes_qs,   # Renomeado para template
-        'vermifugos_hoje': vermifugacoes_pendentes_qs, # Renomeado para template
-        'medicamentos_vencer': medicamentos_criticos_qs, # Renomeado para template
-        'agendamentos_semana': agendamentos_semana_qs, # Adicionado
+        'agendamentos_hoje': agendamentos_hoje_qs, 
+        'vacinas_hoje': vacinas_hoje_qs,   
+        'vermifugos_hoje': vermifugos_hoje_qs, 
+        'medicamentos_vencer': medicamentos_criticos_qs, 
+        'agendamentos_semana': agendamentos_semana_qs, 
         'hoje': hoje,
     }
     return render(request, 'admin/painel_gerencial.html', context)
