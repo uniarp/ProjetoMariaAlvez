@@ -1,5 +1,3 @@
-# models.py - VERSÃO ATUALIZADA
-
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from datetime import timedelta, datetime, date
@@ -11,7 +9,6 @@ from django.utils.timezone import localtime
 import requests
 from django.core.validators import RegexValidator
 
-# Classes principais (Sem alterações aqui)
 class Veterinario(models.Model):
     nome = models.CharField(max_length=255, verbose_name="Nome do Veterinário", default="Nome do Veterinário")
     crmv = models.CharField(max_length=50, unique=True, verbose_name="CRMV", default="00000-UF")
@@ -157,7 +154,7 @@ class Animal(models.Model):
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", blank=True, null=True, help_text="Selecione o tutor responsável por este animal.")
 
     def clean(self):
-        super().clean() 
+        super().clean()
         if self.idade_anos == 0 and self.idade_meses == 0 and self.idade_dias == 0:
             raise ValidationError('O animal deve ter ao menos 1 dia de idade.')
         if self.peso <= 0:
@@ -167,7 +164,6 @@ class Animal(models.Model):
         if self.rfid and not re.fullmatch(r"\d{15}", self.rfid.replace(" ", "")):
             raise ValidationError({'rfid': 'O RFID deve conter exatamente 15 dígitos numéricos, seguindo o padrão ISO 11784/11785.'})
 
-
     def __str__(self):
         tutor_nome = self.tutor.nome if self.tutor else "Tutor não atribuído"
         return f"{self.nome} ({self.especie}) - {self.get_sexo_display()} | Tutor: {tutor_nome}"
@@ -176,7 +172,6 @@ class Animal(models.Model):
         verbose_name = "Animal"
         verbose_name_plural = "Animais"
 
-# Classes de gestão (Sem alterações aqui)
 class EstoqueMedicamento(models.Model):
     VACINA = 'vacina'
     VERMIFUGO = 'vermifugo'
@@ -188,7 +183,7 @@ class EstoqueMedicamento(models.Model):
         (MEDICAMENTO, 'Medicamento'),
     ]
 
-    medicamento = models.CharField("Medicamento", max_length=255, unique=True)  # Evita nomes duplicados
+    medicamento = models.CharField("Medicamento", max_length=255, unique=True)
     tipo_medicamento = models.CharField(
         "Tipo de Medicamento",
         max_length=20,
@@ -238,8 +233,9 @@ class EstoqueMedicamento(models.Model):
     destaque_validade.short_description = "Status da Validade"
 
 class MovimentoEstoqueMedicamento(models.Model):
-    ENTRADA = 'entrada'; SAIDA = 'saida'
-    TIPOS_MOVIMENTO = [(ENTRADA, 'Entrada'),(SAIDA, 'Saída')]
+    ENTRADA = 'entrada'
+    SAIDA = 'saida'
+    TIPOS_MOVIMENTO = [(ENTRADA, 'Entrada'), (SAIDA, 'Saída')]
     estoque_item = models.ForeignKey(EstoqueMedicamento, on_delete=models.RESTRICT, blank=True, null=True, verbose_name="Lote de Medicamento", help_text="Selecione o lote de medicamento ao qual o movimento se refere.")
     tipo = models.CharField("Tipo de Movimento", max_length=10, choices=TIPOS_MOVIMENTO)
     quantidade = models.PositiveIntegerField("Quantidade Movimentada")
@@ -258,24 +254,88 @@ class MovimentoEstoqueMedicamento(models.Model):
         if self.quantidade <= 0:
             raise ValidationError({'quantidade': "A quantidade movimentada deve ser maior que zero."})
         if self.tipo == self.SAIDA:
-            if self.quantidade > self.estoque_item.quantidade:
+            if self.estoque_item and self.quantidade > self.estoque_item.quantidade:
                 raise ValidationError(f"Saldo insuficiente para este lote. Disponível: {self.estoque_item.quantidade}, Saída: {self.quantidade}.")
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
-            super().save(*args, **kwargs) 
-            if self.tipo == self.ENTRADA: self.estoque_item.quantidade += self.quantidade
-            elif self.tipo == self.SAIDA: self.estoque_item.quantidade -= self.quantidade
+            super().save(*args, **kwargs)
+            if self.tipo == self.ENTRADA:
+                self.estoque_item.quantidade += self.quantidade
+            elif self.tipo == self.SAIDA:
+                self.estoque_item.quantidade -= self.quantidade
             self.estoque_item.save()
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            if self.tipo == self.ENTRADA: self.estoque_item.quantidade -= self.quantidade
-            elif self.tipo == self.SAIDA: self.estoque_item.quantidade += self.quantidade
+            if self.tipo == self.ENTRADA:
+                self.estoque_item.quantidade -= self.quantidade
+            elif self.tipo == self.SAIDA:
+                self.estoque_item.quantidade += self.quantidade
             self.estoque_item.save()
             super().delete(*args, **kwargs)
 
-# --- ALTERAÇÃO AQUI ---
+class AgendamentoConsultas(models.Model):
+    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
+    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
+    animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
+    
+    def clean(self):
+        super().clean()
+        if self.data_consulta:
+            if self.data_consulta < timezone.now():
+                raise ValidationError({'data_consulta': "A data da consulta não pode estar no passado."})
+
+            minuto = self.data_consulta.minute
+            if minuto % 15 != 0:
+                minutos_para_ajustar = 15 - (minuto % 15)
+                self.data_consulta = self.data_consulta + timedelta(minutes=minutos_para_ajustar)
+                self.data_consulta = self.data_consulta.replace(second=0, microsecond=0)
+            else:
+                self.data_consulta = self.data_consulta.replace(second=0, microsecond=0)
+
+            start_time = self.data_consulta
+            end_time = self.data_consulta + timedelta(minutes=14, seconds=59)
+
+            conflitos = AgendamentoConsultas.objects.filter(
+                data_consulta__gte=start_time,
+                data_consulta__lte=end_time
+            ).exclude(pk=self.pk)
+
+            if conflitos.exists():
+                raise ValidationError({
+                    'data_consulta': f"Já existe um agendamento neste horário de {self.data_consulta.strftime('%H:%M')} a { (self.data_consulta + timedelta(minutes=15)).strftime('%H:%M') }."
+                })
+        else:
+            raise ValidationError({'data_consulta': "A data da consulta não pode ser vazia."})
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+        if is_new:
+            if not hasattr(self, 'consulta_gerada') or self.consulta_gerada is None:
+                ConsultaClinica.objects.create(
+                    animal=self.animal,
+                    data_atendimento=self.data_consulta,
+                    agendamento_origem=self
+                )
+
+    def delete(self, *args, **kwargs):
+        if hasattr(self, 'consulta_gerada') and self.consulta_gerada is not None:
+            self.consulta_gerada.delete()
+        super().delete(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Agendamento de Consulta"
+        verbose_name_plural = "Agendamentos de Consultas"
+        indexes = [models.Index(fields=['data_consulta'])]
+
+    def __str__(self):
+        if self.animal and self.tutor and self.data_consulta:
+            return f"Consulta de {self.animal.nome} ({self.tutor.nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
+        return "Agendamento sem dados completos"
+
 class ConsultaClinica(models.Model):
     data_atendimento = models.DateTimeField(default=timezone.now, help_text="Data e hora da consulta")
     tipo_atendimento = models.CharField(max_length=100, blank=True, null=True, help_text="Tipo de atendimento (ex: Rotina, Emergência)")
@@ -289,8 +349,16 @@ class ConsultaClinica(models.Model):
     temperatura = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True, help_text="Temperatura corporal em graus Celsius (°C)")
     peso = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Peso do animal em quilogramas (Kg) ") 
     avaliacao_mucosa = models.CharField(max_length=100, blank=True, null=True, help_text="Avaliação da mucosa (ex: Rósea, Pálida, Ictérica)")
-    # exames_realizados = models.TextField(blank=True, null=True, help_text="Nomes ou IDs dos exames realizados (separados por vírgula)") # <-- CAMPO REMOVIDO
     tempo_preenchimento_capilar = models.CharField(max_length=50, blank=True, null=True, help_text="Tempo de preenchimento capilar (ex: < 2 segundos, 3 segundos)")
+    agendamento_origem = models.OneToOneField(
+        'AgendamentoConsultas',
+        on_delete=models.SET_NULL,
+        related_name='consulta_gerada',
+        verbose_name="Agendamento de Origem",
+        blank=True,
+        null=True,
+        help_text="Agendamento que originou esta consulta (se houver)."
+    )
 
     class Meta:
         verbose_name = "Consulta Clínica"
@@ -305,14 +373,11 @@ class ConsultaClinica(models.Model):
 
     def clean(self):
         super().clean() 
-        if not self.diagnostico:
-            raise ValidationError({'diagnostico': 'O campo Diagnóstico não pode ser vazio.'})
         hoje = timezone.localdate()
         data_limite = hoje - timedelta(days=15)
         if self.data_atendimento and self.data_atendimento.date() < data_limite:
             raise ValidationError({'data_atendimento': 'A data da consulta não pode ser mais antiga que 15 dias.'})
 
-# Classes intermediárias e de agendamento (Sem alterações aqui)
 class MedicamentoConsulta(models.Model):
     consulta = models.ForeignKey(ConsultaClinica, on_delete=models.CASCADE, verbose_name="Consulta Clínica")
     medicamento_estoque = models.ForeignKey(EstoqueMedicamento, on_delete=models.RESTRICT, verbose_name="Medicamento (Lote)")
@@ -328,8 +393,10 @@ class MedicamentoConsulta(models.Model):
 
     def clean(self):
         super().clean()
-        if self.quantidade_aplicada <= 0: raise ValidationError({'quantidade_aplicada': "A quantidade aplicada deve ser maior que zero."})
-        if self.medicamento_estoque.quantidade < self.quantidade_aplicada: raise ValidationError({'quantidade_aplicada': f"Estoque insuficiente. Disponível: {self.medicamento_estoque.quantidade}."})
+        if self.quantidade_aplicada <= 0:
+            raise ValidationError({'quantidade_aplicada': "A quantidade aplicada deve ser maior que zero."})
+        if self.medicamento_estoque and self.medicamento_estoque.quantidade < self.quantidade_aplicada:
+            raise ValidationError({'quantidade_aplicada': f"Estoque insuficiente. Disponível: {self.medicamento_estoque.quantidade}."})
     
     def save(self, *args, **kwargs):
         is_new = self._state.adding 
@@ -338,61 +405,53 @@ class MedicamentoConsulta(models.Model):
             try:
                 old_mc = MedicamentoConsulta.objects.get(pk=self.pk)
                 old_quantidade_aplicada = old_mc.quantidade_aplicada
-            except MedicamentoConsulta.DoesNotExist: pass 
+            except MedicamentoConsulta.DoesNotExist:
+                pass 
         with transaction.atomic():
             super().save(*args, **kwargs)
-            if is_new:
-                MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.SAIDA, quantidade=self.quantidade_aplicada, observacao=f"Saída em Consulta Clínica #{self.consulta.pk}.")
-            elif self.quantidade_aplicada != old_quantidade_aplicada:
-                delta = self.quantidade_aplicada - old_quantidade_aplicada
-                tipo_mov = MovimentoEstoqueMedicamento.SAIDA if delta > 0 else MovimentoEstoqueMedicamento.ENTRADA
-                obs = "Aumento" if delta > 0 else "Redução"
-                MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=tipo_mov, quantidade=abs(delta), observacao=f"Ajuste de saída ({obs}) em Consulta Clínica #{self.consulta.pk}.")
+            if self.medicamento_estoque:
+                if is_new:
+                    MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.SAIDA, quantidade=self.quantidade_aplicada, observacao=f"Saída em Consulta Clínica #{self.consulta.pk}.")
+                elif self.quantidade_aplicada != old_quantidade_aplicada:
+                    delta = self.quantidade_aplicada - old_quantidade_aplicada
+                    tipo_mov = MovimentoEstoqueMedicamento.SAIDA if delta > 0 else MovimentoEstoqueMedicamento.ENTRADA
+                    obs = "Aumento" if delta > 0 else "Redução"
+                    MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=tipo_mov, quantidade=abs(delta), observacao=f"Ajuste de saída ({obs}) em Consulta Clínica #{self.consulta.pk}.")
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=self.quantidade_aplicada, observacao=f"Estorno de saída devido à remoção de medicamento da Consulta Clínica #{self.consulta.pk}.")
+            if self.medicamento_estoque:
+                MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_estoque, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=self.quantidade_aplicada, observacao=f"Estorno de saída devido à remoção de medicamento da Consulta Clínica #{self.consulta.pk}.")
             super().delete(*args, **kwargs)
 
-class AgendamentoConsultas(models.Model):
-    data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
-    animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
-    
-    def clean(self):
-        super().clean()
-        if self.data_consulta and self.data_consulta < timezone.now():
-            raise ValidationError({'data_consulta': "A data da consulta não pode estar no passado."})
-        if self.animal and self.data_consulta and AgendamentoConsultas.objects.filter(animal=self.animal, data_consulta=self.data_consulta).exclude(pk=self.pk).exists():
-            raise ValidationError({'data_consulta': "Já existe uma consulta agendada para este animal nesse horário."})
-
-    class Meta:
-        verbose_name = "Agendamento de Consulta"; verbose_name_plural = "Agendamentos de Consultas"
-        indexes = [models.Index(fields=['data_consulta'])]
-
-    def __str__(self):
-        if self.animal and self.tutor and self.data_consulta:
-            return f"Consulta de {self.animal.nome} ({self.tutor.nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
-        return "Agendamento sem dados completos"
-
-# Registros (Com os métodos delete já adicionados)
 class RegistroVacinacao(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
     medicamento_aplicado = models.ForeignKey('EstoqueMedicamento', on_delete=models.SET_NULL, blank=True, null=True, verbose_name="Medicamento/Lote Aplicado")
     data_aplicacao = models.DateField(verbose_name="Data de Aplicação", blank=True, null=True)
     data_revacinacao = models.DateField(verbose_name="Data Revacinação", blank=True, null=True)
     
-    class Meta: verbose_name = "Registro de Vacinação"; verbose_name_plural = "Registros de Vacinação"
+    class Meta:
+        verbose_name = "Registro de Vacinação"
+        verbose_name_plural = "Registros de Vacinação"
+    
     def clean(self):
         super().clean()
-        hoje = timezone.now().date(); limite = hoje - timedelta(days=15)
-        if self.data_aplicacao and self.data_aplicacao < limite: raise ValidationError({'data_aplicacao': 'A data de aplicação não pode ser anterior a 15 dias.'})
-        if self.data_revacinacao and self.data_revacinacao < limite: raise ValidationError({'data_revacinacao': 'A data de revacinação não pode ser anterior a 15 dias.'})
+        hoje = timezone.now().date()
+        limite = hoje - timedelta(days=15)
+        if self.data_aplicacao and self.data_aplicacao < limite:
+            raise ValidationError({'data_aplicacao': 'A data de aplicação não pode ser anterior a 15 dias.'})
+        if self.data_revacinacao and self.data_revacinacao < limite:
+            raise ValidationError({'data_revacinacao': 'A data de revacinação não pode ser anterior a 15 dias.'})
+    
     def save(self, *args, **kwargs):
-        is_new = self._state.adding; original_medicamento_aplicado = None
+        is_new = self._state.adding
+        original_medicamento_aplicado = None
         if not is_new:
-            try: original_registro = RegistroVacinacao.objects.get(pk=self.pk); original_medicamento_aplicado = original_registro.medicamento_aplicado
-            except RegistroVacinacao.DoesNotExist: pass
+            try:
+                original_registro = RegistroVacinacao.objects.get(pk=self.pk)
+                original_medicamento_aplicado = original_registro.medicamento_aplicado
+            except RegistroVacinacao.DoesNotExist:
+                pass
         with transaction.atomic():
             super().save(*args, **kwargs)
             if self.medicamento_aplicado:
@@ -402,13 +461,16 @@ class RegistroVacinacao(models.Model):
                     MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.SAIDA, quantidade=1, observacao=f"Aplicação em vacinação do animal {self.animal.nome if self.animal else 'N/A'} (Registro #{self.pk})")
             elif not is_new and original_medicamento_aplicado:
                 MovimentoEstoqueMedicamento.objects.create(estoque_item=original_medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno de saída (vacinação) devido à remoção do medicamento do registro #{self.pk}")
+    
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.medicamento_aplicado:
                 MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno por exclusão do Registro de Vacinação #{self.pk} para o animal {self.animal.nome if self.animal else 'N/A'}.")
             super().delete(*args, **kwargs)
+    
     def __str__(self):
-        animal_name = self.animal.nome if self.animal else "Animal Não Informado"; data_app = self.data_aplicacao.strftime('%d/%m/%Y') if self.data_aplicacao else "Data Não Informada"
+        animal_name = self.animal.nome if self.animal else "Animal Não Informado"
+        data_app = self.data_aplicacao.strftime('%d/%m/%Y') if self.data_aplicacao else "Data Não Informada"
         return f"Vacinação de {animal_name} em {data_app}"
 
 class RegistroVermifugos(models.Model):
@@ -417,16 +479,28 @@ class RegistroVermifugos(models.Model):
     data_administracao = models.DateField(verbose_name="Data de Administração", blank=True, null=True)
     data_readministracao = models.DateField(verbose_name="Data Readministração", blank=True, null=True)
     
-    class Meta: verbose_name = "Registro de Vermífugo"; verbose_name_plural = "Registros de Vermífugos"
+    class Meta:
+        verbose_name = "Registro de Vermífugo"
+        verbose_name_plural = "Registros de Vermífugos"
+    
     def clean(self):
-        super().clean(); hoje = timezone.now().date(); limite = hoje - timedelta(days=15)
-        if self.data_administracao and self.data_administracao < limite: raise ValidationError({'data_administracao': 'A data de administração não pode ser anterior a 15 dias.'})
-        if self.data_readministracao and self.data_readministracao < limite: raise ValidationError({'data_readministracao': 'A data de readministração não pode ser anterior a 15 dias.'})
+        super().clean()
+        hoje = timezone.now().date()
+        limite = hoje - timedelta(days=15)
+        if self.data_administracao and self.data_administracao < limite:
+            raise ValidationError({'data_administracao': 'A data de administração não pode ser anterior a 15 dias.'})
+        if self.data_readministracao and self.data_readministracao < limite:
+            raise ValidationError({'data_readministracao': 'A data de readministração não pode ser anterior a 15 dias.'})
+    
     def save(self, *args, **kwargs):
-        is_new = self._state.adding; original_medicamento_administrado = None
+        is_new = self._state.adding
+        original_medicamento_administrado = None
         if not is_new:
-            try: original_registro = RegistroVermifugos.objects.get(pk=self.pk); original_medicamento_administrado = original_registro.medicamento_administrado
-            except RegistroVermifugos.DoesNotExist: pass
+            try:
+                original_registro = RegistroVermifugos.objects.get(pk=self.pk)
+                original_medicamento_administrado = original_registro.medicamento_administrado
+            except RegistroVermifugos.DoesNotExist:
+                pass
         with transaction.atomic():
             super().save(*args, **kwargs)
             if self.medicamento_administrado:
@@ -436,40 +510,40 @@ class RegistroVermifugos(models.Model):
                     MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_administrado, tipo=MovimentoEstoqueMedicamento.SAIDA, quantidade=1, observacao=f"Administração de vermífugo em {self.animal.nome if self.animal else 'N/A'} (Registro #{self.pk})")
             elif not is_new and original_medicamento_administrado:
                 MovimentoEstoqueMedicamento.objects.create(estoque_item=original_medicamento_administrado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno de saída (vermífugo) devido à remoção do medicamento do registro #{self.pk}")
+    
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.medicamento_administrado:
                 MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_administrado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno por exclusão do Registro de Vermífugo #{self.pk} para o animal {self.animal.nome if self.animal else 'N/A'}.")
             super().delete(*args, **kwargs)
+    
     def __str__(self):
-        animal_name = self.animal.nome if self.animal else "Animal Não Informado"; data_adm = self.data_administracao.strftime('%d/%m/%Y') if self.data_administracao else "Data Não Informada"
+        animal_name = self.animal.nome if self.animal else "Animal Não Informado"
+        data_adm = self.data_administracao.strftime('%d/%m/%Y') if self.data_administracao else "Data Não Informada"
         return f"Vermífugo em {animal_name} em {data_adm}"
 
-# --- ALTERAÇÃO AQUI ---
 class Exames(models.Model):
     id_exame = models.BigAutoField(primary_key=True)
     
-    # --- CAMPO NOVO ---
     consulta = models.ForeignKey(
         ConsultaClinica, 
         on_delete=models.CASCADE, 
         related_name='exames', 
         verbose_name="Consulta Associada",
         blank=True,
-        null=True # Permite que exames existam sem uma consulta (opcional)
+        null=True
     )
 
-    # --- CAMPO ALTERADO ---
     animal = models.ForeignKey(
         'Animal',
         on_delete=models.CASCADE,
         verbose_name="Animal",
-        blank=True, # Agora pode ser opcional, se o exame estiver ligado a uma consulta
+        blank=True,
         null=True
     )
 
     nome = models.CharField(max_length=100, verbose_name="Nome do Exame")
-    descricao = models.TextField(verbose_name="Descrição do Exame", blank=True, null=True) # Permitir em branco
+    descricao = models.TextField(verbose_name="Descrição do Exame", blank=True, null=True)
     tipo = models.CharField(max_length=50, choices=[('Imagem', 'Imagem'), ('Laboratorial', 'Laboratorial'), ('Clínico', 'Clínico')], verbose_name="Tipo de Exame")
     anexo = models.FileField(upload_to='exames/', blank=True, null=True, verbose_name="Anexo do Exame")
     data_exame = models.DateField(verbose_name="Data de Realização do Exame", default=timezone.now)
@@ -490,7 +564,6 @@ class Exames(models.Model):
             return f"Exame de {self.tipo} em {animal_info} ({self.data_exame.strftime('%d/%m/%Y')})"
         return "Exame (sem dados completos)"
 
-# Relatórios (Sem alterações)
 class RelatoriosGerais(models.Model):
     class Meta:
         managed = False
