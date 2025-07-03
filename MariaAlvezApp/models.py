@@ -10,10 +10,10 @@ import requests
 from django.core.validators import RegexValidator
 
 class Veterinario(models.Model):
-    nome = models.CharField(max_length=255, verbose_name="Nome do Veterinário", default="Nome do Veterinário")
-    crmv = models.CharField(max_length=50, unique=True, verbose_name="CRMV", default="00000-UF")
-    telefone = models.CharField(max_length=15, verbose_name="Telefone", blank=True, null=True)
-    email = models.EmailField(verbose_name="E-mail", blank=True, null=True)
+    nome = models.CharField(max_length=255, verbose_name="Nome do Veterinário", help_text="Nome Completo do veterinario")
+    crmv = models.CharField(max_length=50, unique=True, verbose_name="CRMV", help_text="CRMV do Veterinario Ex: (65485-SC)")
+    telefone = models.CharField(max_length=15, verbose_name="Telefone", help_text="Telefone Veterinario")
+    email = models.EmailField(verbose_name="E-mail", blank=True, null=True, help_text="Email do veterinario")
 
     class Meta:
         verbose_name = "Veterinário"
@@ -75,14 +75,14 @@ def buscar_endereco_por_cep(cep):
     
 
 class Tutor(models.Model):
-    nome = models.CharField(max_length=100, verbose_name="Nome")
-    cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf], verbose_name="CPF")
-    telefone = models.CharField(max_length=15, validators=[validar_telefone], verbose_name="Telefone")
-    data_nascimento = models.DateField(verbose_name="Data de Nascimento")
-    cep = models.CharField(max_length=9, verbose_name="CEP")
-    endereco = models.CharField(max_length=255, verbose_name="Endereço")
-    cidade = models.CharField(max_length=100, verbose_name="Cidade")
-    estado = models.CharField(max_length=2, verbose_name="Estado")
+    nome = models.CharField(max_length=100, verbose_name="Nome", help_text="Nome Completo do tutor!")
+    cpf = models.CharField(max_length=14, unique=True, validators=[validar_cpf], verbose_name="CPF", help_text="CPF do Tutor")
+    telefone = models.CharField(max_length=15, validators=[validar_telefone], verbose_name="Telefone", help_text="Telefone do tutor com DDD. Ex:(49998086201)")
+    data_nascimento = models.DateField(verbose_name="Data de Nascimento", help_text="Data de Nascimento do Tutor. Ex: 19/09/2000")
+    cep = models.CharField(max_length=9, verbose_name="CEP", help_text="Clique para buscar o CEP preenchido.")
+    endereco = models.CharField(max_length=255, verbose_name="Endereço", help_text="Lembre de Preencher com o numero da casa. Ex:(Rua Exemplo, 999)")
+    cidade = models.CharField(max_length=100, verbose_name="Cidade", help_text="Cidade do Tutor")
+    estado = models.CharField(max_length=2, verbose_name="Estado", help_text="Estado do Tutor")
 
     def clean(self):
         if self.data_nascimento:
@@ -142,15 +142,15 @@ class Tutor(models.Model):
     
 class Animal(models.Model):
     SEXO_CHOICES = [('M', 'Macho'), ('F', 'Fêmea')]
-    nome = models.CharField(max_length=150, default="Nome", verbose_name="Nome")
-    especie = models.CharField(max_length=100, default="Especie", verbose_name="Espécie")
-    idade_anos = models.PositiveIntegerField(default=0, verbose_name="Anos")
-    idade_meses = models.PositiveIntegerField(default=0, verbose_name="Meses")
-    idade_dias = models.PositiveIntegerField(default=0, verbose_name="Dias")
-    sexo = models.CharField(max_length=15, choices=SEXO_CHOICES, default="Sexo", verbose_name="Sexo")
+    nome = models.CharField(max_length=150, default="Nome", help_text="Nome do Animal", verbose_name="Nome")
+    especie = models.CharField(max_length=100, default="Especie", help_text="Espécie do Animal. Ex:(Cachorro, Gato, Passaro, etc)", verbose_name="Espécie")
+    idade_anos = models.PositiveIntegerField(verbose_name="Anos", help_text="Quantos anos o animal tem")
+    idade_meses = models.PositiveIntegerField(verbose_name="Meses", help_text="Quantos meses o animal tem")
+    idade_dias = models.PositiveIntegerField(verbose_name="Dias", help_text="Quantos dias o animal tem")
+    sexo = models.CharField(max_length=15, choices=SEXO_CHOICES, default="Sexo", verbose_name="Sexo", help_text="Escolha o sexo do animal")
     peso = models.DecimalField(default=0, max_digits=10, decimal_places=3, help_text="Peso em quilogramas", verbose_name="Peso (kg)")
-    castrado = models.BooleanField(default=False, verbose_name="Castrado(a)")
-    rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="0", verbose_name="RFID") 
+    castrado = models.BooleanField(default=False, verbose_name="Castrado(a)", help_text="Marque se o animal for castrado")
+    rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="0", verbose_name="RFID", help_text="RFID segue padrão ISO 11784/11785 EXEMPLOS: 985 112003456789") 
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", help_text="Selecione o tutor responsável por este animal.")
 
     def clean(self):
@@ -236,10 +236,10 @@ class MovimentoEstoqueMedicamento(models.Model):
     ENTRADA = 'entrada'
     SAIDA = 'saida'
     TIPOS_MOVIMENTO = [(ENTRADA, 'Entrada'), (SAIDA, 'Saída')]
-    estoque_item = models.ForeignKey(EstoqueMedicamento, on_delete=models.RESTRICT, blank=True, null=True, verbose_name="Lote de Medicamento", help_text="Selecione o lote de medicamento ao qual o movimento se refere.")
-    tipo = models.CharField("Tipo de Movimento", max_length=10, choices=TIPOS_MOVIMENTO)
-    quantidade = models.PositiveIntegerField("Quantidade Movimentada")
-    data = models.DateTimeField("Data do Movimento", auto_now_add=True)
+    estoque_item = models.ForeignKey(EstoqueMedicamento, on_delete=models.RESTRICT, blank=True, null=True, verbose_name="Lote de Medicamento", help_text="Selecione o medicamento ao qual o movimento se refere.")
+    tipo = models.CharField("Tipo de Movimento", max_length=10, choices=TIPOS_MOVIMENTO, help_text="Escolha o tipo de movimento: ENTRADA ou SAIDA")
+    quantidade = models.PositiveIntegerField("Quantidade Movimentada", help_text="Escolha a quantidade movimentada")
+    data = models.DateTimeField("Data do Movimento", auto_now_add=True, help_text="Data de Hoje")
     observacao = models.TextField("Observação", blank=True, null=True)
 
     class Meta:
@@ -277,8 +277,7 @@ class MovimentoEstoqueMedicamento(models.Model):
 
 class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
-    animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
-    
+    animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal", help_text="Selecione o Animal para agendamento!")
     def clean(self): #
         super().clean()
         # Validações de data no passado e duplicidade movidas para o formulário (forms.py)
