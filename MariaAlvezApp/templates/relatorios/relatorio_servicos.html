@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Serviços</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/changelists.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f6f9; color: #212529; }
+        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2f2f2f; text-align: center; margin-bottom: 20px; }
+        form { margin-bottom: 20px; }
+        fieldset { border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="date"], select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button.btn {
+            background-color: #006699;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button.btn:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        p strong { font-weight: bold; }
+        .back-link { margin-top: 20px; }
+
+        .btn-pdf {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+            color: white !important;
+        }
+        .btn-pdf:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        .btn-pdf i {
+            margin-right: 8px;
+        }
+
+        .back-button-container {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .back-button-container a.btn.btn-primary {
+            color: white !important;
+            text-decoration: none !important;
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 4px;
+            background-color: #006699 !important;
+        }
+        .back-button-container a.btn.btn-primary:hover {
+            background-color: #0056b3 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Serviços</h1>
+
+        <form method="get">
+            <fieldset>
+                <legend>Filtrar Serviços</legend>
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </fieldset>
+        </form>
+
+        {% if servicos %}
+            <p><strong>Total de Registros Encontrados:</strong> {{ servicos.count }}</p>
+
+            <div style="text-align: right; margin-bottom: 15px;">
+                <a href="{% url 'relatorio_servicos_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf">
+                    <i class="fas fa-file-pdf"></i> Imprimir em PDF
+                </a>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Animal</th>
+                        <th>Empresa</th>
+                        <th>Data e Hora</th>
+                        <th>Valor (R$)</th>
+                        <th>Medicamentos Aplicados</th>
+                        <th>Outros Procedimentos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for servico in servicos %}
+                    <tr>
+                        <td>{{ servico.animal.nome|default:'N/A' }}</td>
+                        <td>{{ servico.empresa.razao_social }}</td>
+                        <td>{{ servico.data_hora_procedimento|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if servico.valor_servico is not None %}
+                                {{ servico.valor_servico|floatformat:2 }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>{{ servico.medicamentos_aplicados|default:"Nenhum" }}</td>
+                        <td>{{ servico.outros_procedimentos|default:"Nenhum" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Nenhum registro de serviço encontrado com os filtros aplicados.</p>
+        {% endif %}
+
+        <div class="back-button-container">
+            <a href="{% url 'relatorios_index' %}" class="btn btn-primary">
+                ← Voltar para o Painel de Relatórios
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,240 +1,94 @@
 from django.shortcuts import render
-from django.db.models import Q
-from django.utils import timezone
-from datetime import timedelta, date
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Q 
 from django.http import HttpResponse
 from django.template.loader import get_template
-from weasyprint import HTML, CSS
-from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+from datetime import timedelta, datetime
 
+# Importar modelos e formulários do próprio MariaAlvezApp
 from .models import (
-    ConsultaClinica, EstoqueMedicamento, RegistroVacinacao,
-    RegistroVermifugos, Tutor, Animal, AgendamentoConsultas
+    AgendamentoConsultas, ConsultaClinica, EstoqueMedicamento,
+    RegistroVacinacao, RegistroVermifugos,
 )
 from .forms import (
-    FiltroConsultaForm, FiltroEstoqueForm,
-    FiltroVacinacaoForm, FiltroVermifugosForm
+    FiltroConsultaForm, FiltroEstoqueForm, FiltroVacinacaoForm,
+    FiltroVermifugosForm, FiltroRegistroServicoForm 
 )
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
+# Importar modelos do app Terceiros
+from Terceiros.models import RegistroServico, EmpresaTerceirizada 
+
+# Para PDF
+from weasyprint import HTML, CSS
+from django.conf import settings 
+from django.contrib.staticfiles.storage import staticfiles_storage # Importe staticfiles_storage aqui
+
+
 def relatorios_index(request):
     return render(request, 'relatorios/relatorios_index.html')
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
 def relatorio_consultas(request):
-    form = FiltroConsultaForm(request.GET or None)
+    form = FiltroConsultaForm(request.GET)
     consultas = ConsultaClinica.objects.all().order_by('-data_atendimento')
 
     if form.is_valid():
         data_inicio = form.cleaned_data.get('data_inicio')
         data_fim = form.cleaned_data.get('data_fim')
-        tutor_selecionado = form.cleaned_data.get('tutor')
-        animal_selecionado = form.cleaned_data.get('animal')
+        tutor = form.cleaned_data.get('tutor')
+        animal = form.cleaned_data.get('animal')
 
         if data_inicio:
             consultas = consultas.filter(data_atendimento__date__gte=data_inicio)
         if data_fim:
             consultas = consultas.filter(data_atendimento__date__lte=data_fim)
-        if animal_selecionado:
-            consultas = consultas.filter(animal=animal_selecionado)
-        elif tutor_selecionado:
-            consultas = consultas.filter(animal__tutor=tutor_selecionado)
+        if tutor:
+            consultas = consultas.filter(animal__tutor=tutor)
+        if animal:
+            consultas = consultas.filter(animal=animal)
 
-    return render(request, 'relatorios/relatorio_consultas.html', {
-        'form': form,
-        'consultas': consultas,
-    })
+    context = {'consultas': consultas, 'form': form}
+    return render(request, 'relatorios/relatorio_consultas.html', context)
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_estoque(request):
-    form = FiltroEstoqueForm(request.GET or None)
-    estoque = EstoqueMedicamento.objects.all().order_by('data_validade', 'medicamento')
-
-    if form.is_valid():
-        medicamento = form.cleaned_data.get('medicamento')
-        lote = form.cleaned_data.get('lote')
-        data_validade_inicio = form.cleaned_data.get('data_validade_inicio')
-        data_validade_fim = form.cleaned_data.get('data_validade_fim')
-        status_estoque = form.cleaned_data.get('status_estoque')
-
-        if medicamento:
-            estoque = estoque.filter(medicamento__icontains=medicamento)
-        if lote:
-            estoque = estoque.filter(lote__icontains=lote)
-        if data_validade_inicio:
-            estoque = estoque.filter(data_validade__gte=data_validade_inicio)
-        if data_validade_fim:
-            estoque = estoque.filter(data_validade__lte=data_validade_fim)
-
-        hoje = timezone.now().date()
-        if status_estoque == 'com_estoque':
-            estoque = estoque.filter(quantidade__gt=0)
-        elif status_estoque == 'sem_estoque':
-            estoque = estoque.filter(quantidade=0)
-        elif status_estoque == 'vencidos':
-            estoque = estoque.filter(data_validade__lt=hoje)
-        elif status_estoque == 'vencendo':
-            data_limite_vencendo = hoje + timedelta(days=30)
-            estoque = estoque.filter(data_validade__range=(hoje, data_limite_vencendo))
-
-    return render(request, 'relatorios/relatorio_estoque.html', {
-        'form': form,
-        'estoque': estoque,
-        'hoje': timezone.now().date()
-    })
-
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_vacinacao(request):
-    form = FiltroVacinacaoForm(request.GET or None)
-    vacinacoes = RegistroVacinacao.objects.all().order_by('-data_aplicacao')
-
-    if form.is_valid():
-        animal_selecionado = form.cleaned_data.get('animal')
-        data_aplicacao_inicio = form.cleaned_data.get('data_aplicacao_inicio')
-        data_aplicacao_fim = form.cleaned_data.get('data_aplicacao_fim')
-        status_revacacao = form.cleaned_data.get('status_revacinacao')
-        medicamento_selecionado = form.cleaned_data.get('medicamento')
-
-        if animal_selecionado:
-            vacinacoes = vacinacoes.filter(animal=animal_selecionado)
-        if data_aplicacao_inicio:
-            vacinacoes = vacinacoes.filter(data_aplicacao__gte=data_aplicacao_inicio)
-        if data_aplicacao_fim:
-            vacinacoes = vacinacoes.filter(data_aplicacao__lte=data_aplicacao_fim)
-        if medicamento_selecionado:
-            vacinacoes = vacinacoes.filter(medicamento_aplicado=medicamento_selecionado)
-
-        hoje = timezone.now().date()
-        if status_revacacao:
-            q_objects = Q()
-            if status_revacacao == 'ok':
-                q_objects &= Q(data_revacinacao__gte=hoje)
-            elif status_revacacao == 'vencendo':
-                data_limite_vencendo = hoje + timedelta(days=30)
-                q_objects &= Q(data_revacinacao__range=(hoje, data_limite_vencendo))
-            elif status_revacacao == 'atrasada':
-                q_objects &= Q(data_revacinacao__lt=hoje)
-            elif status_revacacao == 'nao_definida':
-                q_objects &= Q(data_revacinacao__isnull=True)
-            vacinacoes = vacinacoes.filter(q_objects)
-
-
-    hoje = timezone.now().date() 
-    for vacina in vacinacoes:
-        if vacina.data_revacinacao:
-            delta = vacina.data_revacinacao - hoje
-            vacina.days_diff = delta.days
-        else:
-            vacina.days_diff = None 
-
-    return render(request, 'relatorios/relatorio_vacinacao.html', {
-        'form': form,
-        'vacinacoes': vacinacoes,
-        'hoje': hoje 
-    })
-
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_vermifugos(request):
-    form = FiltroVermifugosForm(request.GET or None)
-    vermifugos = RegistroVermifugos.objects.all().order_by('-data_administracao')
-
-    if form.is_valid():
-        animal_selecionado = form.cleaned_data.get('animal')
-        data_administracao_inicio = form.cleaned_data.get('data_administracao_inicio')
-        data_administracao_fim = form.cleaned_data.get('data_administracao_fim')
-        status_readmin = form.cleaned_data.get('status_readministracao')
-        medicamento_selecionado = form.cleaned_data.get('medicamento')
-
-        if animal_selecionado:
-            vermifugos = vermifugos.filter(animal=animal_selecionado)
-        if data_administracao_inicio:
-            vermifugos = vermifugos.filter(data_administracao__gte=data_administracao_inicio)
-        if data_administracao_fim:
-            vermifugos = vermifugos.filter(data_administracao__lte=data_administracao_fim)
-        if medicamento_selecionado:
-            vermifugos = vermifugos.filter(medicamento_administrado=medicamento_selecionado)
-
-        hoje = timezone.now().date()
-        if status_readmin:
-            q_objects = Q()
-            if status_readmin == 'ok':
-                q_objects &= Q(data_readministracao__gte=hoje)
-            elif status_readmin == 'vencendo':
-                data_limite_vencendo = hoje + timedelta(days=30)
-                q_objects &= Q(data_readministracao__range=(hoje, data_limite_vencendo))
-            elif status_readmin == 'atrasada':
-                q_objects &= Q(data_readministracao__lt=hoje)
-            elif status_readmin == 'nao_definida':
-                q_objects &= Q(data_readministracao__isnull=True)
-            vermifugos = vermifugos.filter(q_objects)
-
-    hoje = timezone.now().date()
-    for vermifugo in vermifugos:
-        if vermifugo.data_readministracao:
-            delta = vermifugo.data_readministracao - hoje
-            vermifugo.days_diff = delta.days
-        else:
-            vermifugo.days_diff = None
-
-    return render(request, 'relatorios/relatorio_vermifugos.html', {
-        'form': form,
-        'vermifugos': vermifugos,
-        'hoje': hoje
-    })
-
-@login_required
-@user_passes_test(lambda u: u.is_staff)
 def relatorio_consultas_pdf(request):
-    form = FiltroConsultaForm(request.GET or None)
+    form = FiltroConsultaForm(request.GET)
     consultas = ConsultaClinica.objects.all().order_by('-data_atendimento')
 
     if form.is_valid():
         data_inicio = form.cleaned_data.get('data_inicio')
         data_fim = form.cleaned_data.get('data_fim')
-        tutor_selecionado = form.cleaned_data.get('tutor')
-        animal_selecionado = form.cleaned_data.get('animal')
+        tutor = form.cleaned_data.get('tutor')
+        animal = form.cleaned_data.get('animal')
 
         if data_inicio:
             consultas = consultas.filter(data_atendimento__date__gte=data_inicio)
         if data_fim:
             consultas = consultas.filter(data_atendimento__date__lte=data_fim)
-        if animal_selecionado:
-            consultas = consultas.filter(animal=animal_selecionado)
-        elif tutor_selecionado:
-            consultas = consultas.filter(animal__tutor=tutor_selecionado)
+        if tutor:
+            consultas = consultas.filter(animal__tutor=tutor)
+        if animal:
+            consultas = consultas.filter(animal=animal)
 
     template = get_template('relatorios/relatorio_consultas_pdf.html')
-    context = {
-        'form': form,
-        'consultas': consultas,
-        'total_consultas': consultas.count(),
-        'request': request,
-    }
-    html_string = template.render(context)
-
-    try:
-        pdf_html = HTML(string=html_string, base_url=request.build_absolute_uri())
-        pdf_file = pdf_html.write_pdf()
-
-    except Exception as e:
-        print(f"Erro ao gerar o PDF: {e}")
-        return HttpResponse(f"Erro ao gerar o PDF: {e}", status=500)
+    html = template.render({'consultas': consultas, 'total_consultas': consultas.count()})
+    
+    # CORREÇÃO AQUI: Usando CSS(url=...)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
 
     response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="relatorio_consultas.pdf"'
+    response['Content-Disposition'] = 'inline; filename="relatorio_consultas.pdf"'
     return response
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_estoque_pdf(request):
-    form = FiltroEstoqueForm(request.GET or None)
-    estoque = EstoqueMedicamento.objects.all().order_by('data_validade', 'medicamento')
+def relatorio_estoque(request):
+    form = FiltroEstoqueForm(request.GET)
+    estoque = EstoqueMedicamento.objects.all().order_by('data_validade')
+    hoje = timezone.now().date()
 
     if form.is_valid():
         medicamento = form.cleaned_data.get('medicamento')
@@ -252,7 +106,6 @@ def relatorio_estoque_pdf(request):
         if data_validade_fim:
             estoque = estoque.filter(data_validade__lte=data_validade_fim)
 
-        hoje = timezone.now().date()
         if status_estoque == 'com_estoque':
             estoque = estoque.filter(quantidade__gt=0)
         elif status_estoque == 'sem_estoque':
@@ -260,184 +113,349 @@ def relatorio_estoque_pdf(request):
         elif status_estoque == 'vencidos':
             estoque = estoque.filter(data_validade__lt=hoje)
         elif status_estoque == 'vencendo':
-            data_limite_vencendo = hoje + timedelta(days=30)
-            estoque = estoque.filter(data_validade__range=(hoje, data_limite_vencendo))
+            limite_vencimento = hoje + timedelta(days=30)
+            estoque = estoque.filter(data_validade__range=(hoje, limite_vencimento))
 
+    context = {'estoque': estoque, 'form': form, 'hoje': hoje}
+    return render(request, 'relatorios/relatorio_estoque.html', context)
+
+def relatorio_estoque_pdf(request):
+    form = FiltroEstoqueForm(request.GET)
+    estoque = EstoqueMedicamento.objects.all().order_by('data_validade')
+    hoje = timezone.now().date()
+
+    if form.is_valid():
+        medicamento = form.cleaned_data.get('medicamento')
+        lote = form.cleaned_data.get('lote')
+        data_validade_inicio = form.cleaned_data.get('data_validade_inicio')
+        data_validade_fim = form.cleaned_data.get('data_validade_fim')
+        status_estoque = form.cleaned_data.get('status_estoque')
+
+        if medicamento:
+            estoque = estoque.filter(medicamento__icontains=medicamento)
+        if lote:
+            estoque = estoque.filter(lote__icontains=lote)
+        if data_validade_inicio:
+            estoque = estoque.filter(data_validade__gte=data_validade_inicio)
+        if data_validade_fim:
+            estoque = estoque.filter(data_validade__lte=data_validade_fim)
+
+        if status_estoque == 'com_estoque':
+            estoque = estoque.filter(quantidade__gt=0)
+        elif status_estoque == 'sem_estoque':
+            estoque = estoque.filter(quantidade=0)
+        elif status_estoque == 'vencidos':
+            estoque = estoque.filter(data_validade__lt=hoje)
+        elif status_estoque == 'vencendo':
+            limite_vencimento = hoje + timedelta(days=30)
+            estoque = estoque.filter(data_validade__range=(hoje, limite_vencimento))
+    
     template = get_template('relatorios/relatorio_estoque_pdf.html')
-    context = {
-        'form': form,
-        'estoque': estoque,
-        'hoje': timezone.now().date(),
-        'total_lotes': estoque.count(),
-        'request': request,
-    }
-    html_string = template.render(context)
-
-    try:
-        pdf_html = HTML(string=html_string, base_url=request.build_absolute_uri())
-        pdf_file = pdf_html.write_pdf()
-
-    except Exception as e:
-        print(f"Erro ao gerar o PDF de Estoque: {e}")
-        return HttpResponse(f"Erro ao gerar o PDF de Estoque: {e}", status=500)
+    html = template.render({'estoque': estoque, 'total_lotes': estoque.count(), 'hoje': hoje})
+    # CORREÇÃO AQUI: Usando CSS(url=...)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
 
     response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="relatorio_estoque.pdf"'
+    response['Content-Disposition'] = 'inline; filename="relatorio_estoque.pdf"'
     return response
 
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_vacinacao_pdf(request):
-    form = FiltroVacinacaoForm(request.GET or None)
+def relatorio_vacinacao(request):
+    form = FiltroVacinacaoForm(request.GET)
     vacinacoes = RegistroVacinacao.objects.all().order_by('-data_aplicacao')
+    hoje = timezone.now().date()
 
     if form.is_valid():
-        animal_selecionado = form.cleaned_data.get('animal')
+        animal = form.cleaned_data.get('animal')
         data_aplicacao_inicio = form.cleaned_data.get('data_aplicacao_inicio')
         data_aplicacao_fim = form.cleaned_data.get('data_aplicacao_fim')
-        status_revacacao = form.cleaned_data.get('status_revacinacao')
-        medicamento_selecionado = form.cleaned_data.get('medicamento')
+        status_revacinacao = form.cleaned_data.get('status_revacinacao')
+        medicamento = form.cleaned_data.get('medicamento')
 
-        if animal_selecionado:
-            vacinacoes = vacinacoes.filter(animal=animal_selecionado)
+        if animal:
+            vacinacoes = vacinacoes.filter(animal=animal)
         if data_aplicacao_inicio:
             vacinacoes = vacinacoes.filter(data_aplicacao__gte=data_aplicacao_inicio)
         if data_aplicacao_fim:
             vacinacoes = vacinacoes.filter(data_aplicacao__lte=data_aplicacao_fim)
-        if medicamento_selecionado:
-            vacinacoes = vacinacoes.filter(medicamento_aplicado=medicamento_selecionado)
+        if medicamento:
+            vacinacoes = vacinacoes.filter(medicamento_aplicado=medicamento)
 
-        hoje = timezone.now().date()
-        if status_revacacao:
-            q_objects = Q()
-            if status_revacacao == 'ok':
-                q_objects &= Q(data_revacinacao__gte=hoje)
-            elif status_revacacao == 'vencendo':
-                data_limite_vencendo = hoje + timedelta(days=30)
-                q_objects &= Q(data_revacinacao__range=(hoje, data_limite_vencendo))
-            elif status_revacacao == 'atrasada':
-                q_objects &= Q(data_revacinacao__lt=hoje)
-            elif status_revacacao == 'nao_definida':
-                q_objects &= Q(data_revacinacao__isnull=True)
-            vacinacoes = vacinacoes.filter(q_objects)
-
-    hoje = timezone.now().date()
+        if status_revacinacao:
+            if status_revacinacao == 'ok':
+                vacinacoes = vacinacoes.filter(Q(data_revacinacao__gte=hoje + timedelta(days=31)) | Q(data_revacinacao__isnull=True))
+            elif status_revacinacao == 'vencendo':
+                limite_vencimento = hoje + timedelta(days=30)
+                vacinacoes = vacinacoes.filter(data_revacinacao__range=(hoje, limite_vencimento))
+            elif status_revacinacao == 'atrasada':
+                vacinacoes = vacinacoes.filter(data_revacinacao__lt=hoje)
+            elif status_revacinacao == 'nao_definida':
+                vacinacoes = vacinacoes.filter(data_revacinacao__isnull=True)
+    
     for vacina in vacinacoes:
         if vacina.data_revacinacao:
-            delta = vacina.data_revacinacao - hoje
-            vacina.days_diff = delta.days
+            vacina.days_diff = (vacina.data_revacinacao - hoje).days
+        else:
+            vacina.days_diff = None
+
+    context = {'vacinacoes': vacinacoes, 'form': form, 'hoje': hoje}
+    return render(request, 'relatorios/relatorio_vacinacao.html', context)
+
+def relatorio_vacinacao_pdf(request):
+    form = FiltroVacinacaoForm(request.GET)
+    vacinacoes = RegistroVacinacao.objects.all().order_by('-data_aplicacao')
+    hoje = timezone.now().date()
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        data_aplicacao_inicio = form.cleaned_data.get('data_aplicacao_inicio')
+        data_aplicacao_fim = form.cleaned_data.get('data_aplicacao_fim')
+        status_revacinacao = form.cleaned_data.get('status_revacinacao')
+        medicamento = form.cleaned_data.get('medicamento')
+
+        if animal:
+            vacinacoes = vacinacoes.filter(animal=animal)
+        if data_aplicacao_inicio:
+            vacinacoes = vacinacoes.filter(data_aplicacao__gte=data_aplicacao_inicio)
+        if data_aplicacao_fim:
+            vacinacoes = vacinacoes.filter(data_aplicacao__lte=data_aplicacao_fim)
+        if medicamento:
+            vacinacoes = vacinacoes.filter(medicamento_aplicado=medicamento)
+
+        if status_revacinacao:
+            if status_revacinacao == 'ok':
+                vacinacoes = vacinacoes.filter(Q(data_revacinacao__gte=hoje + timedelta(days=31)) | Q(data_revacinacao__isnull=True))
+            elif status_revacinacao == 'vencendo':
+                limite_vencimento = hoje + timedelta(days=30)
+                vacinacoes = vacinacoes.filter(data_revacinacao__range=(hoje, limite_vencimento))
+            elif status_revacinacao == 'atrasada':
+                vacinacoes = vacinacoes.filter(data_revacinacao__lt=hoje)
+            elif status_revacinacao == 'nao_definida':
+                vacinacoes = vacinacoes.filter(data_revacinacao__isnull=True)
+
+    for vacina in vacinacoes:
+        if vacina.data_revacinacao:
+            vacina.days_diff = (vacina.data_revacinacao - hoje).days
         else:
             vacina.days_diff = None
 
     template = get_template('relatorios/relatorio_vacinacao_pdf.html')
-    context = {
-        'form': form,
-        'vacinacoes': vacinacoes,
-        'hoje': hoje,
-        'total_registros': vacinacoes.count(),
-        'request': request,
-    }
-    html_string = template.render(context)
-
-    try:
-        pdf_html = HTML(string=html_string, base_url=request.build_absolute_uri())
-        pdf_file = pdf_html.write_pdf()
-
-    except Exception as e:
-        print(f"Erro ao gerar o PDF de Vacinação: {e}")
-        return HttpResponse(f"Erro ao gerar o PDF de Vacinação: {e}", status=500)
+    html = template.render({'vacinacoes': vacinacoes, 'total_registros': vacinacoes.count(), 'hoje': hoje})
+    
+    # CORREÇÃO AQUI: Usando CSS(url=...)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
 
     response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="relatorio_vacinacao.pdf"'
+    response['Content-Disposition'] = 'inline; filename="relatorio_vacinacao.pdf"'
     return response
 
 
-@login_required
-@user_passes_test(lambda u: u.is_staff)
-def relatorio_vermifugos_pdf(request):
-    form = FiltroVermifugosForm(request.GET or None)
+def relatorio_vermifugos(request):
+    form = FiltroVermifugosForm(request.GET)
     vermifugos = RegistroVermifugos.objects.all().order_by('-data_administracao')
+    hoje = timezone.now().date()
 
     if form.is_valid():
-        animal_selecionado = form.cleaned_data.get('animal')
+        animal = form.cleaned_data.get('animal')
         data_administracao_inicio = form.cleaned_data.get('data_administracao_inicio')
         data_administracao_fim = form.cleaned_data.get('data_administracao_fim')
-        status_readmin = form.cleaned_data.get('status_readministracao')
-        medicamento_selecionado = form.cleaned_data.get('medicamento')
+        status_readministracao = form.cleaned_data.get('status_readministracao')
+        medicamento = form.cleaned_data.get('medicamento')
 
-        if animal_selecionado:
-            vermifugos = vermifugos.filter(animal=animal_selecionado)
+        if animal:
+            vermifugos = vermifugos.filter(animal=animal)
         if data_administracao_inicio:
             vermifugos = vermifugos.filter(data_administracao__gte=data_administracao_inicio)
         if data_administracao_fim:
             vermifugos = vermifugos.filter(data_administracao__lte=data_administracao_fim)
-        if medicamento_selecionado:
-            vermifugos = vermifugos.filter(medicamento_administrado=medicamento_selecionado)
+        if medicamento:
+            vermifugos = vermifugos.filter(medicamento_administrado=medicamento)
 
-        hoje = timezone.now().date()
-        if status_readmin:
-            q_objects = Q()
-            if status_readmin == 'ok':
-                q_objects &= Q(data_readministracao__gte=hoje)
-            elif status_readmin == 'vencendo':
-                data_limite_vencendo = hoje + timedelta(days=30)
-                q_objects &= Q(data_readministracao__range=(hoje, data_limite_vencendo))
-            elif status_readmin == 'atrasada':
-                q_objects &= Q(data_readministracao__lt=hoje)
-            elif status_readmin == 'nao_definida':
-                q_objects &= Q(data_readministracao__isnull=True)
-            vermifugos = vermifugos.filter(q_objects)
+        if status_readministracao:
+            if status_readministracao == 'ok':
+                vermifugos = vermifugos.filter(Q(data_readministracao__gte=hoje + timedelta(days=31)) | Q(data_readministracao__isnull=True))
+            elif status_readministracao == 'vencendo':
+                limite_readministracao = hoje + timedelta(days=30)
+                vermifugos = vermifugos.filter(data_readministracao__range=(hoje, limite_readministracao))
+            elif status_readministracao == 'atrasada':
+                vermifugos = vermifugos.filter(data_readministracao__lt=hoje)
+            elif status_readministracao == 'nao_definida':
+                vermifugos = vermifugos.filter(data_readministracao__isnull=True)
 
-    hoje = timezone.now().date()
     for vermifugo in vermifugos:
         if vermifugo.data_readministracao:
-            delta = vermifugo.data_readministracao - hoje
-            vermifugo.days_diff = delta.days
+            vermifugo.days_diff = (vermifugo.data_readministracao - hoje).days
+        else:
+            vermifugo.days_diff = None
+
+    context = {'vermifugos': vermifugos, 'form': form, 'hoje': hoje}
+    return render(request, 'relatorios/relatorio_vermifugos.html', context)
+
+def relatorio_vermifugos_pdf(request):
+    form = FiltroVermifugosForm(request.GET)
+    vermifugos = RegistroVermifugos.objects.all().order_by('-data_administracao')
+    hoje = timezone.now().date()
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        data_administracao_inicio = form.cleaned_data.get('data_administracao_inicio')
+        data_administracao_fim = form.cleaned_data.get('data_administracao_fim')
+        status_readministracao = form.cleaned_data.get('status_readministracao')
+        medicamento = form.cleaned_data.get('medicamento')
+
+        if animal:
+            vermifugos = vermifugos.filter(animal=animal)
+        if data_administracao_inicio:
+            vermifugos = vermifugos.filter(data_administracao__gte=data_administracao_inicio)
+        if data_administracao_fim:
+            vermifugos = vermifugos.filter(data_administracao__lte=data_administracao_fim)
+        if medicamento:
+            vermifugos = vermifugos.filter(medicamento_administrado=medicamento)
+
+        if status_readministracao:
+            if status_readministracao == 'ok':
+                vermifugos = vermifugos.filter(Q(data_readministracao__gte=hoje + timedelta(days=31)) | Q(data_readministracao__isnull=True))
+            elif status_readministracao == 'vencendo':
+                limite_readministracao = hoje + timedelta(days=30)
+                vermifugos = vermifugos.filter(data_readministracao__range=(hoje, limite_readministracao))
+            elif status_readministracao == 'atrasada':
+                vermifugos = vermifugos.filter(data_readministracao__lt=hoje)
+            elif status_readministracao == 'nao_definida':
+                vermifugos = vermifugos.filter(data_readministracao__isnull=True)
+
+    for vermifugo in vermifugos:
+        if vermifugo.data_readministracao:
+            vermifugo.days_diff = (vermifugo.data_readministracao - hoje).days
         else:
             vermifugo.days_diff = None
 
     template = get_template('relatorios/relatorio_vermifugos_pdf.html')
-    context = {
-        'form': form,
-        'vermifugos': vermifugos,
-        'hoje': hoje,
-        'total_registros': vermifugos.count(),
-        'request': request,
-    }
-    html_string = template.render(context)
-
-    try:
-        pdf_html = HTML(string=html_string, base_url=request.build_absolute_uri())
-        pdf_file = pdf_html.write_pdf()
-
-    except Exception as e:
-        print(f"Erro ao gerar o PDF de Vermífugos: {e}")
-        return HttpResponse(f"Erro ao gerar o PDF de Vermífugos: {e}", status=500)
+    html = template.render({'vermifugos': vermifugos, 'total_registros': vermifugos.count(), 'hoje': hoje})
+    
+    # CORREÇÃO AQUI: Usando CSS(url=...)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
 
     response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="relatorio_vermifugos.pdf"'
+    response['Content-Disposition'] = 'inline; filename="relatorio_vermifugos.pdf"'
     return response
 
-@staff_member_required
+# --- NOVAS VIEWS PARA RELATÓRIO DE SERVIÇOS ---
+def relatorio_servicos(request):
+    form = FiltroRegistroServicoForm(request.GET)
+    servicos = RegistroServico.objects.all().order_by('-data_hora_procedimento')
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        empresa = form.cleaned_data.get('empresa')
+        data_inicio = form.cleaned_data.get('data_inicio')
+        data_fim = form.cleaned_data.get('data_fim')
+        busca_texto = form.cleaned_data.get('busca_texto')
+
+        if animal:
+            servicos = servicos.filter(animal=animal)
+        if empresa:
+            servicos = servicos.filter(empresa=empresa)
+        if data_inicio:
+            servicos = servicos.filter(data_hora_procedimento__date__gte=data_inicio)
+        if data_fim:
+            servicos = servicos.filter(data_hora_procedimento__date__lte=data_fim)
+        
+        if busca_texto:
+            servicos = servicos.filter(
+                Q(medicamentos_aplicados__icontains=busca_texto) |
+                Q(outros_procedimentos__icontains=busca_texto)
+            )
+
+    context = {'servicos': servicos, 'form': form}
+    return render(request, 'relatorios/relatorio_servicos.html', context)
+
+def relatorio_servicos_pdf(request):
+    form = FiltroRegistroServicoForm(request.GET)
+    servicos = RegistroServico.objects.all().order_by('-data_hora_procedimento')
+
+    if form.is_valid():
+        animal = form.cleaned_data.get('animal')
+        empresa = form.cleaned_data.get('empresa')
+        data_inicio = form.cleaned_data.get('data_inicio')
+        data_fim = form.cleaned_data.get('data_fim')
+        busca_texto = form.cleaned_data.get('busca_texto')
+
+        if animal:
+            servicos = servicos.filter(animal=animal)
+        if empresa:
+            servicos = servicos.filter(empresa=empresa)
+        if data_inicio:
+            servicos = servicos.filter(data_hora_procedimento__date__gte=data_inicio)
+        if data_fim:
+            servicos = servicos.filter(data_hora_procedimento__date__lte=data_fim)
+        
+        if busca_texto:
+            servicos = servicos.filter(
+                Q(medicamentos_aplicados__icontains=busca_texto) |
+                Q(outros_procedimentos__icontains=busca_texto)
+            )
+
+    template = get_template('relatorios/relatorio_servicos_pdf.html')
+    html = template.render({'servicos': servicos, 'total_registros': servicos.count()})
+    
+    # CORREÇÃO AQUI: Usando CSS(url=...)
+    pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
+        stylesheets=[
+            CSS(string='@page { size: A4; margin: 1cm; }'),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/base.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/forms.css'))),
+            CSS(url=request.build_absolute_uri(staticfiles_storage.url('admin/css/changelists.css'))),
+        ]
+    )
+
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="relatorio_servicos.pdf"'
+    return response
+
 def painel_gerencial(request):
-    from datetime import timedelta
-    from django.utils import timezone
-    from MariaAlvezApp.models import AgendamentoConsultas, EstoqueMedicamento, RegistroVacinacao, RegistroVermifugos
     hoje = timezone.localdate()
-    semana_inicio = hoje - timedelta(days=hoje.weekday())
-    semana_fim = semana_inicio + timedelta(days=6)
+    agendamentos_hoje = AgendamentoConsultas.objects.filter(data_consulta__date=hoje).order_by('data_consulta')
+    
+    # Medicamentos vencendo em 30 dias ou vencidos
+    data_limite_vencimento = hoje + timedelta(days=30)
+    medicamentos_criticos = EstoqueMedicamento.objects.filter(data_validade__lte=data_limite_vencimento).exclude(quantidade=0).order_by('data_validade')
 
-    agendamentos_hoje = AgendamentoConsultas.objects.filter(data_consulta__date=hoje)
-    agendamentos_semana = AgendamentoConsultas.objects.filter(data_consulta__date__gte=semana_inicio, data_consulta__date__lte=semana_fim)
-    medicamentos_vencer = EstoqueMedicamento.objects.filter(data_validade__gte=hoje, data_validade__lte=hoje+timedelta(days=30)).order_by('data_validade')
-    vacinas_hoje = RegistroVacinacao.objects.filter(data_revacinacao=hoje)
-    vermifugos_hoje = RegistroVermifugos.objects.filter(data_readministracao=hoje)
+    # Vacinações com revacinação hoje ou atrasadas
+    vacinacoes_pendentes = RegistroVacinacao.objects.filter(
+        data_revacinacao__lte=hoje
+    ).exclude(data_revacinacao__isnull=True).order_by('data_revacinacao')
 
-    return render(request, 'painel_gerencial.html', {
+    # Vermifugações com readministração hoje ou atrasadas
+    vermifugacoes_pendentes = RegistroVermifugos.objects.filter(
+        data_readministracao__lte=hoje
+    ).exclude(data_readministracao__isnull=True).order_by('data_readministracao')
+
+    context = {
         'agendamentos_hoje': agendamentos_hoje,
-        'agendamentos_semana': agendamentos_semana,
-        'medicamentos_vencer': medicamentos_vencer,
-        'vacinas_hoje': vacinas_hoje,
-        'vermifugos_hoje': vermifugos_hoje,
-    })
+        'medicamentos_criticos': medicamentos_criticos,
+        'vacinacoes_pendentes': vacinacoes_pendentes,
+        'vermifugacoes_pendentes': vermifugacoes_pendentes,
+        'hoje': hoje,
+    }
+    return render(request, 'admin/painel_gerencial.html', context)
