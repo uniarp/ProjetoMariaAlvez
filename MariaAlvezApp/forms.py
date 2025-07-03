@@ -130,7 +130,8 @@ class AgendamentoConsultasForm(forms.ModelForm):
                 hora_consulta_obj = datetime.strptime(hora_consulta_str, "%H:%M").time()
                 combined_datetime = datetime.combine(data_consulta_date, hora_consulta_obj)
                 combined_datetime = timezone.make_aware(combined_datetime, timezone.get_current_timezone())
-                cleaned_data['data_consulta'] = combined_datetime 
+                # Aqui definimos o combined_datetime, mas ainda não o atribuímos a cleaned_data['data_consulta']
+                # explicitamente para que o ModelForm não tente validar isso antes do tempo.
             except ValueError:
                 errors['hora_consulta'] = "Formato de hora inválido."
         
@@ -139,27 +140,35 @@ class AgendamentoConsultasForm(forms.ModelForm):
                 self.add_error(field, msg)
             raise forms.ValidationError("Corrija os erros do formulário.") 
 
-        if combined_datetime and combined_datetime < timezone.now():
-            self.add_error('data_consulta_date', "A data da consulta não pode estar no passado.")
-        
-        if animal and combined_datetime:
-            data_hora_comparacao = combined_datetime.replace(second=0, microsecond=0)
+        # Validações que dependem de combined_datetime
+        if combined_datetime:
+            if combined_datetime < timezone.now():
+                self.add_error('data_consulta_date', "A data da consulta não pode estar no passado.")
             
-            qs = AgendamentoConsultas.objects.filter(
-                animal=animal,
-                data_consulta=data_hora_comparacao
-            )
-            
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            
-            if qs.exists():
-                self.add_error('hora_consulta', "Já existe uma consulta agendada para este animal nesse horário.")
+            if animal:
+                data_hora_comparacao = combined_datetime.replace(second=0, microsecond=0)
+                qs = AgendamentoConsultas.objects.filter(
+                    animal=animal,
+                    data_consulta=data_hora_comparacao
+                )
+                if self.instance.pk:
+                    qs = qs.exclude(pk=self.instance.pk)
+                
+                if qs.exists():
+                    self.add_error('hora_consulta', "Já existe uma consulta agendada para este animal nesse horário.")
 
+        # FINALMENTE, atribui combined_datetime a cleaned_data['data_consulta'] aqui
+        # para que o método save() do ModelForm possa acessar o valor correto.
+        cleaned_data['data_consulta'] = combined_datetime 
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        # ATENÇÃO: LINHA CRUCIAL ADICIONADA/CORRIGIDA AQUI!
+        # Garante que a data_consulta da instância do modelo seja definida com o valor combinado
+        # ANTES de ser salvo no banco de dados.
+        instance.data_consulta = self.cleaned_data['data_consulta'] 
+
         if commit:
             instance.save()
         return instance

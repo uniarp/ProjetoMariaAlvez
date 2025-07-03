@@ -1,3 +1,5 @@
+# MariaAlvezApp/views.py
+
 from django.shortcuts import render
 from django.db.models import Q 
 from django.http import HttpResponse
@@ -21,7 +23,7 @@ from Terceiros.models import RegistroServico, EmpresaTerceirizada
 # Para PDF
 from weasyprint import HTML, CSS
 from django.conf import settings 
-from django.contrib.staticfiles.storage import staticfiles_storage # Importe staticfiles_storage aqui
+from django.contrib.staticfiles.storage import staticfiles_storage 
 
 
 def relatorios_index(request):
@@ -71,7 +73,6 @@ def relatorio_consultas_pdf(request):
     template = get_template('relatorios/relatorio_consultas_pdf.html')
     html = template.render({'consultas': consultas, 'total_consultas': consultas.count()})
     
-    # CORREÇÃO AQUI: Usando CSS(url=...)
     pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
         stylesheets=[
             CSS(string='@page { size: A4; margin: 1cm; }'),
@@ -152,7 +153,6 @@ def relatorio_estoque_pdf(request):
     
     template = get_template('relatorios/relatorio_estoque_pdf.html')
     html = template.render({'estoque': estoque, 'total_lotes': estoque.count(), 'hoje': hoje})
-    # CORREÇÃO AQUI: Usando CSS(url=...)
     pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
         stylesheets=[
             CSS(string='@page { size: A4; margin: 1cm; }'),
@@ -249,7 +249,6 @@ def relatorio_vacinacao_pdf(request):
     template = get_template('relatorios/relatorio_vacinacao_pdf.html')
     html = template.render({'vacinacoes': vacinacoes, 'total_registros': vacinacoes.count(), 'hoje': hoje})
     
-    # CORREÇÃO AQUI: Usando CSS(url=...)
     pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
         stylesheets=[
             CSS(string='@page { size: A4; margin: 1cm; }'),
@@ -346,7 +345,6 @@ def relatorio_vermifugos_pdf(request):
     template = get_template('relatorios/relatorio_vermifugos_pdf.html')
     html = template.render({'vermifugos': vermifugos, 'total_registros': vermifugos.count(), 'hoje': hoje})
     
-    # CORREÇÃO AQUI: Usando CSS(url=...)
     pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
         stylesheets=[
             CSS(string='@page { size: A4; margin: 1cm; }'),
@@ -419,7 +417,6 @@ def relatorio_servicos_pdf(request):
     template = get_template('relatorios/relatorio_servicos_pdf.html')
     html = template.render({'servicos': servicos, 'total_registros': servicos.count()})
     
-    # CORREÇÃO AQUI: Usando CSS(url=...)
     pdf_file = HTML(string=html, base_url=request.build_absolute_uri()).write_pdf(
         stylesheets=[
             CSS(string='@page { size: A4; margin: 1cm; }'),
@@ -435,27 +432,37 @@ def relatorio_servicos_pdf(request):
 
 def painel_gerencial(request):
     hoje = timezone.localdate()
-    agendamentos_hoje = AgendamentoConsultas.objects.filter(data_consulta__date=hoje).order_by('data_consulta')
+    agendamentos_hoje_qs = AgendamentoConsultas.objects.filter(data_consulta__date=hoje).order_by('data_consulta')
     
     # Medicamentos vencendo em 30 dias ou vencidos
     data_limite_vencimento = hoje + timedelta(days=30)
-    medicamentos_criticos = EstoqueMedicamento.objects.filter(data_validade__lte=data_limite_vencimento).exclude(quantidade=0).order_by('data_validade')
+    medicamentos_criticos_qs = EstoqueMedicamento.objects.filter(data_validade__lte=data_limite_vencimento).exclude(quantidade=0).order_by('data_validade')
 
     # Vacinações com revacinação hoje ou atrasadas
-    vacinacoes_pendentes = RegistroVacinacao.objects.filter(
+    vacinacoes_pendentes_qs = RegistroVacinacao.objects.filter(
         data_revacinacao__lte=hoje
     ).exclude(data_revacinacao__isnull=True).order_by('data_revacinacao')
 
     # Vermifugações com readministração hoje ou atrasadas
-    vermifugacoes_pendentes = RegistroVermifugos.objects.filter(
+    vermifugacoes_pendentes_qs = RegistroVermifugos.objects.filter(
         data_readministracao__lte=hoje
     ).exclude(data_readministracao__isnull=True).order_by('data_readministracao')
 
+    # Lógica para Agendamentos na Semana
+    dia_semana_atual = hoje.weekday() # 0 = segunda, 6 = domingo
+    inicio_semana = hoje - timedelta(days=dia_semana_atual)
+    fim_semana = inicio_semana + timedelta(days=6)
+    agendamentos_semana_qs = AgendamentoConsultas.objects.filter(
+        data_consulta__date__gte=inicio_semana,
+        data_consulta__date__lte=fim_semana
+    ).order_by('data_consulta')
+
     context = {
-        'agendamentos_hoje': agendamentos_hoje,
-        'medicamentos_criticos': medicamentos_criticos,
-        'vacinacoes_pendentes': vacinacoes_pendentes,
-        'vermifugacoes_pendentes': vermifugacoes_pendentes,
+        'agendamentos_hoje': agendamentos_hoje_qs, # Renomeado para template
+        'vacinas_hoje': vacinacoes_pendentes_qs,   # Renomeado para template
+        'vermifugos_hoje': vermifugacoes_pendentes_qs, # Renomeado para template
+        'medicamentos_vencer': medicamentos_criticos_qs, # Renomeado para template
+        'agendamentos_semana': agendamentos_semana_qs, # Adicionado
         'hoje': hoje,
     }
     return render(request, 'admin/painel_gerencial.html', context)

@@ -107,6 +107,8 @@ JAZZMIN_SETTINGS = {
         "MariaAlvezApp.RegistroVermifugos": "fas fa-pills",
         "MariaAlvezApp.Exames": "fas fa-vial",
         "MariaAlvezApp.RelatoriosGerais": "fas fa-file",
+        "Terceiros.EmpresaTerceirizada": "fas fa-building", 
+        "Terceiros.RegistroServico": "fas fa-clipboard-list", 
     },
 }
 
@@ -170,4 +172,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
