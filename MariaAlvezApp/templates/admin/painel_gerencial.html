@@ -23,7 +23,6 @@
 <div class="container-fluid" style="margin-top: 30px;">
     <h1 class="text-center mb-4">Painel Gerencial</h1>
     <div class="row">
-        <!-- Agendamentos do Dia -->
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-primary painel-card">
                 <div class="card-body">
@@ -32,7 +31,7 @@
                     <div class="painel-lista">
                         <ul class="list-unstyled">
                             {% for ag in agendamentos_hoje|slice:':5' %}
-                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.tutor.nome }}) - {{ ag.data_consulta|date:'H:i' }}</li>
+                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.animal.tutor.nome }}) - {{ ag.data_consulta|date:'H:i' }}</li>
                             {% empty %}
                             <li>Nenhum agendamento hoje.</li>
                             {% endfor %}
@@ -41,7 +40,6 @@
                 </div>
             </div>
         </div>
-        <!-- Vacinas do Dia -->
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-success painel-card">
                 <div class="card-body">
@@ -52,14 +50,13 @@
                             {% for vac in vacinas_hoje|slice:':5' %}
                             <li><b>{{ vac.animal.nome }}</b> ({{ vac.animal.tutor.nome }})</li>
                             {% empty %}
-                            <li>Nenhuma vacina hoje.</li>
+                            <li>Nenhuma vacina hoje.</li> {# CORREÇÃO AQUI: Removido quebra de linha literal #}
                             {% endfor %}
                         </ul>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Vermífugos do Dia -->
         <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-warning painel-card">
                 <div class="card-body">
@@ -79,7 +76,6 @@
         </div>
     </div>
     <div class="row">
-        <!-- Medicamentos a vencer -->
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm border-danger painel-card">
                 <div class="card-body">
@@ -97,7 +93,6 @@
                 </div>
             </div>
         </div>
-        <!-- Agendamentos da Semana -->
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm border-info painel-card">
                 <div class="card-body">
@@ -106,7 +101,7 @@
                     <div class="painel-lista">
                         <ul class="list-unstyled">
                             {% for ag in agendamentos_semana|slice:':5' %}
-                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.tutor.nome }}) - {{ ag.data_consulta|date:'d/m/Y H:i' }}</li>
+                            <li><b>{{ ag.animal.nome }}</b> ({{ ag.animal.tutor.nome }}) - {{ ag.data_consulta|date:'d/m/Y H:i' }}</li>
                             {% empty %}
                             <li>Nenhum agendamento na semana.</li>
                             {% endfor %}
@@ -118,4 +113,4 @@
     </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-{% endblock %} 
+{% endblock %}
