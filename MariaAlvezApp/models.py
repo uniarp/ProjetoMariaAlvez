@@ -277,7 +277,19 @@ class MovimentoEstoqueMedicamento(models.Model):
 
 # --- ALTERAÇÃO AQUI ---
 class ConsultaClinica(models.Model):
-    data_atendimento = models.DateTimeField(default=timezone.now, help_text="Data e hora da consulta")
+    agendamento = models.ForeignKey(
+        'AgendamentoConsultas',
+        on_delete=models.CASCADE,
+        related_name='agendamentos_consultas',
+        verbose_name="Agendamento",
+        null=True,
+        blank=True
+    )
+    data_atendimento = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Data do Atendimento",
+        help_text="Data e hora em que a consulta foi realizada"
+    )
     tipo_atendimento = models.CharField(max_length=100, blank=True, null=True, help_text="Tipo de atendimento (ex: Rotina, Emergência)")
     veterinario = models.ForeignKey(Veterinario, on_delete=models.SET_NULL, related_name='consultas_realizadas', verbose_name="Veterinário Responsável", blank=True, null=True, help_text="Selecione o veterinário responsável pela consulta")
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='historico_consultas', verbose_name="Animal Atendido", blank=True, null=True, help_text="Selecione o animal atendido na consulta")
@@ -358,7 +370,12 @@ class AgendamentoConsultas(models.Model):
     data_consulta = models.DateTimeField(verbose_name="Data da Consulta", default=timezone.now, blank=True, null=True)
     tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='agendamentos', verbose_name="Tutor")
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE, related_name='agendamentos_consultas', verbose_name="Animal")
-    
+    para_castracao = models.BooleanField(
+        default=False,
+        verbose_name="Agendamento para Castração?",
+        help_text="Marque se este agendamento é para castração."
+    )
+
     def clean(self):
         super().clean()
         if self.data_consulta and self.data_consulta < timezone.now():

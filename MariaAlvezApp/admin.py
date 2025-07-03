@@ -91,10 +91,10 @@ class ExameInline(admin.TabularInline):
 # ModelAdmins
 @admin.register(ConsultaClinica)
 class ConsultaClinicaAdmin(admin.ModelAdmin):
-    list_display = ('animal', 'data_atendimento', 'veterinario', 'tipo_atendimento', 'diagnostico', 'get_medicamentos_aplicados_display')
-    search_fields = ('animal__nome', 'veterinario__nome', 'diagnostico') 
+    list_display = ('agendamento','animal', 'data_atendimento', 'veterinario', 'tipo_atendimento', 'diagnostico', 'get_medicamentos_aplicados_display')
+    search_fields = ('animal_nome', 'veterinario_nome', 'diagnostico') 
     fieldsets = (
-        (None, {'fields': ('animal', 'veterinario', 'data_atendimento', 'tipo_atendimento', 'diagnostico', 'observacoes')}),
+        (None, {'fields': ('agendamento','animal', 'veterinario', 'data_atendimento', 'tipo_atendimento', 'diagnostico', 'observacoes')}),
         ('Detalhes Físicos', {'fields': ('frequencia_cardiaca', 'frequencia_respiratoria', 'temperatura', 'peso', 'avaliacao_mucosa', 'tempo_preenchimento_capilar'), 'classes': ('collapse',)}),
     )
     inlines = [MedicamentoConsultaInline, ExameInline]
