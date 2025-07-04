@@ -102,7 +102,7 @@
 
             <!-- Botão de Imprimir PDF - Estilizado -->
             <div style="text-align: right; margin-bottom: 15px;">
-                <a href="{% url 'relatorio_consultas_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf">
+                <a href="{% url 'relatorio_consultas_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf" target="_blank">
                     <i class="fas fa-file-pdf"></i> Imprimir em PDF
                 </a>
             </div>

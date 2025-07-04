@@ -144,25 +144,88 @@ class Animal(models.Model):
     SEXO_CHOICES = [('M', 'Macho'), ('F', 'Fêmea')]
     nome = models.CharField(max_length=150, default="Nome", help_text="Nome do Animal", verbose_name="Nome")
     especie = models.CharField(max_length=100, default="Especie", help_text="Espécie do Animal. Ex:(Cachorro, Gato, Passaro, etc)", verbose_name="Espécie")
-    idade_anos = models.PositiveIntegerField(verbose_name="Anos", help_text="Quantos anos o animal tem")
-    idade_meses = models.PositiveIntegerField(verbose_name="Meses", help_text="Quantos meses o animal tem")
-    idade_dias = models.PositiveIntegerField(verbose_name="Dias", help_text="Quantos dias o animal tem")
+    
+    # --- CAMPOS DE IDADE (serão preenchidos automaticamente se a data de nascimento for dada) ---
+    idade_anos = models.PositiveIntegerField(default=0, verbose_name="Anos", help_text="Quantos anos o animal tem (será preenchido automaticamente pela data de nascimento)")
+    idade_meses = models.PositiveIntegerField(default=0, verbose_name="Meses", help_text="Quantos meses o animal tem (será preenchido automaticamente pela data de nascimento)")
+    idade_dias = models.PositiveIntegerField(default=0, verbose_name="Dias", help_text="Quantos dias o animal tem (será preenchido automaticamente pela data de nascimento)")
+    
+    # --- NOVO CAMPO: DATA DE NASCIMENTO (este será o campo principal para idade) ---
+    data_nascimento = models.DateField(
+        verbose_name="Data de Nascimento",
+        blank=True,    # Permite deixar em branco no formulário
+        null=True,     # Permite valor NULL no banco de dados
+        help_text="Data de nascimento exata do animal. Se vazia, será calculada com base na idade fornecida."
+    )
+
     sexo = models.CharField(max_length=15, choices=SEXO_CHOICES, default="Sexo", verbose_name="Sexo", help_text="Escolha o sexo do animal")
     peso = models.DecimalField(default=0, max_digits=10, decimal_places=3, help_text="Peso em quilogramas", verbose_name="Peso (kg)")
     castrado = models.BooleanField(default=False, verbose_name="Castrado(a)", help_text="Marque se o animal for castrado")
-    rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="0", verbose_name="RFID", help_text="RFID segue padrão ISO 11784/11785 EXEMPLOS: 985 112003456789") 
+    rfid = models.CharField(max_length=128, unique=True, null=True, blank=True, default="", verbose_name="RFID", help_text="RFID segue padrão ISO 11784/11785 EXEMPLOS: 985 112003456789") 
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='animais_tutor', verbose_name="Tutor do Animal", help_text="Selecione o tutor responsável por este animal.")
 
     def clean(self):
         super().clean()
-        if self.idade_anos == 0 and self.idade_meses == 0 and self.idade_dias == 0:
-            raise ValidationError('O animal deve ter ao menos 1 dia de idade.')
-        if self.peso <= 0:
+        
+        hoje = date.today()
+
+        # Verifica se pelo menos um dos campos de idade OU a data de nascimento foi preenchido
+        idade_fornecida = (self.idade_anos is not None and self.idade_anos > 0) or \
+                          (self.idade_meses is not None and self.idade_meses > 0) or \
+                          (self.idade_dias is not None and self.idade_dias > 0)
+
+        if not self.data_nascimento and not idade_fornecida:
+            raise ValidationError('É necessário informar a idade (anos, meses, dias) ou a data de nascimento do animal.')
+
+        # CENÁRIO PRINCIPAL: data_nascimento é a fonte da verdade
+        if self.data_nascimento:
+            if self.data_nascimento > hoje:
+                raise ValidationError({'data_nascimento': 'A data de nascimento não pode estar no futuro.'})
+            
+            # Calcula a idade (anos, meses, dias) a partir da data de nascimento
+            # de forma mais precisa, considerando meses e dias do ano.
+            anos = hoje.year - self.data_nascimento.year
+            meses = hoje.month - self.data_nascimento.month
+            dias = hoje.day - self.data_nascimento.day
+
+            if dias < 0:
+                meses -= 1
+                # Calcula os dias no mês anterior à data atual
+                # Ex: se hoje é 05/julho e nasc é 10/junho, pega dias de junho (30) + 5 dias de julho - 10 dias de junho = 25 dias
+                dias += (hoje - timedelta(days=hoje.day)).day # Dias do mês anterior
+
+            if meses < 0:
+                anos -= 1
+                meses += 12
+            
+            self.idade_anos = anos
+            self.idade_meses = meses
+            self.idade_dias = dias
+
+        # CENÁRIO SECUNDÁRIO: data_nascimento NÃO foi preenchida, mas a idade foi
+        elif idade_fornecida:
+            # Calcula a data de nascimento retroativamente a partir da idade fornecida
+            # Isso é uma estimativa, pois anos/meses são aproximados.
+            total_dias_estimado = (self.idade_anos * 365) + (self.idade_meses * 30) + self.idade_dias
+            
+            if total_dias_estimado < 1: # Garante que a idade não é zero
+                raise ValidationError('O animal deve ter ao menos 1 dia de idade.')
+            
+            self.data_nascimento = hoje - timedelta(days=total_dias_estimado)
+        
+        # --- Suas validações existentes (manter) ---
+        if self.peso is not None and self.peso <= 0: # Adicione 'is not None' para campos nulos
             raise ValidationError({'peso': 'O peso deve ser maior que zero.'})
+        
         self.nome = self.nome.strip().capitalize()
         self.especie = self.especie.strip().capitalize()
-        if self.rfid and not re.fullmatch(r"\d{15}", self.rfid.replace(" ", "")):
-            raise ValidationError({'rfid': 'O RFID deve conter exatamente 15 dígitos numéricos, seguindo o padrão ISO 11784/11785.'})
+        
+        # Validação do RFID, considerando que pode ser null ou blank
+        if self.rfid: # Só valida se o campo RFID não estiver vazio
+            rfid_numeros = self.rfid.replace(" ", "")
+            if not re.fullmatch(r"\d{15}", rfid_numeros):
+                raise ValidationError({'rfid': 'O RFID deve conter exatamente 15 dígitos numéricos, seguindo o padrão ISO 11784/11785.'})
+        # Se rfid for null ou "", a validação acima não será acionada, o que está de acordo com blank=True, null=True.
 
     def __str__(self):
         tutor_nome = self.tutor.nome if self.tutor else "Tutor não atribuído"
@@ -171,6 +234,7 @@ class Animal(models.Model):
     class Meta:
         verbose_name = "Animal"
         verbose_name_plural = "Animais"
+        # Adicione ordering se ainda não tiver, ex: ordering = ['nome']
 
 class EstoqueMedicamento(models.Model):
     VACINA = 'vacina'
@@ -313,14 +377,31 @@ class AgendamentoConsultas(models.Model):
             return f"{tipo_agendamento} para {self.animal.nome} (Tutor: {tutor_nome}) - {localtime(self.data_consulta).strftime('%d/%m/%Y %H:%M')}"
         return "Agendamento sem dados completos"
     
+
 class ConsultaClinica(models.Model):
     data_atendimento = models.DateTimeField(default=timezone.now, help_text="Data e hora da consulta")
-    tipo_atendimento = models.CharField(max_length=100, blank=True, null=True, help_text="Tipo de atendimento (ex: Rotina, Emergência)")
+    
+    # Definir as opções para o tipo de atendimento
+    TIPO_ATENDIMENTO_CHOICES = [
+        ('CONSULTA_ROTINA', 'Consulta de Rotina'),
+        ('EMERGENCIA', 'Emergência'),
+        ('OUTRO', 'Outro'),
+    ]
+    
+    # --- CAMPO tipo_atendimento: ADICIONE 'choices' e 'verbose_name' e 'help_text' ---
+    tipo_atendimento = models.CharField(
+        max_length=50, # Defina um max_length que comporte a chave mais longa ('CONSULTA_ROTINA')
+        choices=TIPO_ATENDIMENTO_CHOICES,
+        default='CONSULTA_ROTINA', # Defina um valor padrão, se desejar
+        verbose_name="Tipo de Atendimento",
+        help_text="Selecione o tipo de atendimento realizado."
+    )
+
     veterinario = models.ForeignKey(Veterinario, on_delete=models.SET_NULL, related_name='consultas_realizadas', verbose_name="Veterinário Responsável", blank=True, null=True, help_text="Selecione o veterinário responsável pela consulta")
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='historico_consultas', verbose_name="Animal Atendido", blank=True, null=True, help_text="Selecione o animal atendido na consulta")
     medicamentos_aplicados = models.ManyToManyField(EstoqueMedicamento, through='MedicamentoConsulta', related_name='consultas_onde_aplicado', verbose_name="Medicamentos Aplicados na Consulta", blank=True)
-    diagnostico = models.TextField(blank=True, null=True, help_text="Diagnóstico da consulta")
-    observacoes = models.TextField(blank=True, null=True, help_text="Observações adicionais da consulta")
+    diagnostico = models.TextField(blank=True, null=True, help_text="Diagnóstico da consulta", verbose_name="Diagnóstico")
+    observacoes = models.TextField(blank=True, null=True, help_text="Observações adicionais da consulta", verbose_name="Observações")
     frequencia_cardiaca = models.IntegerField(blank=True, null=True, help_text="Frequência cardíaca em batimentos por minuto (BPM)")
     frequencia_respiratoria = models.IntegerField(blank=True, null=True, help_text="Frequência respiratoria em respirações por minuto (RPM)")
     temperatura = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True, help_text="Temperatura corporal em graus Celsius (°C)")
@@ -358,7 +439,11 @@ class ConsultaClinica(models.Model):
         animal_info = self.animal.nome if self.animal else 'N/A'
         vet_info = self.veterinario.nome if self.veterinario else 'N/A'
         tutor_info = self.animal.tutor.nome if self.animal and self.animal.tutor else 'N/A' 
-        return f"Consulta de {animal_info} (Tutor: {tutor_info}) por {vet_info} em {self.data_atendimento.strftime('%d/%m/%Y %H:%M')}"
+        
+        # Para exibir o tipo de atendimento de forma legível
+        tipo_display = self.get_tipo_atendimento_display()
+        
+        return f"Consulta de {animal_info} (Tutor: {tutor_info}) por {vet_info} em {self.data_atendimento.strftime('%d/%m/%Y %H:%M')} ({tipo_display})"
 
     def clean(self):
         super().clean() 
@@ -366,6 +451,8 @@ class ConsultaClinica(models.Model):
         data_limite = hoje - timedelta(days=15)
         if self.data_atendimento and self.data_atendimento.date() < data_limite:
             raise ValidationError({'data_atendimento': 'A data da consulta não pode ser mais antiga que 15 dias.'})
+        if self.peso is None or self.peso <= 0:
+            raise ValidationError({'peso': 'O peso do animal na consulta deve ser maior que zero.'})
 
 class MedicamentoConsulta(models.Model):
     consulta = models.ForeignKey(ConsultaClinica, on_delete=models.CASCADE, verbose_name="Consulta Clínica")
@@ -414,30 +501,68 @@ class MedicamentoConsulta(models.Model):
             super().delete(*args, **kwargs)
 
 class RegistroVacinacao(models.Model):
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
+    animal = models.ForeignKey(
+        Animal, 
+        on_delete=models.CASCADE, 
+        verbose_name="Animal",
+        help_text="Selecione o animal vacinado." # Adicionei help_text para clareza
+    )
     medicamento_aplicado = models.ForeignKey(
         'EstoqueMedicamento',
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        verbose_name="Medicamento/Lote Aplicado",
-        limit_choices_to={'tipo_medicamento': EstoqueMedicamento.VACINA}
+        on_delete=models.SET_NULL, # SET_NULL é mantido, mas o campo se torna obrigatório a nível de formulário/modelo
+        blank=False, null=True,
+        verbose_name="Vacina/Lote Aplicado",
+        limit_choices_to={'tipo_medicamento': EstoqueMedicamento.VACINA},
+        help_text="Selecione a vacina (lote) aplicada. Apenas vacinas serão listadas." # Adicionei help_text
     )
-    data_aplicacao = models.DateField(verbose_name="Data de Aplicação", blank=True, null=True)
-    data_revacinacao = models.DateField(verbose_name="Data Revacinação", blank=True, null=True)
+    data_aplicacao = models.DateField(
+        verbose_name="Data de Aplicação", 
+        blank=False, 
+        null=False,  
+        help_text="Informe a data em que a vacina foi aplicada." # Adicionei help_text
+    )
+    data_revacinacao = models.DateField(
+        verbose_name="Data Revacinação", 
+        blank=False, 
+        null=False, 
+        help_text="Informe a data da próxima revacinação." # Adicionei help_text
+    )
     
     class Meta:
         verbose_name = "Registro de Vacinação"
         verbose_name_plural = "Registros de Vacinação"
+
     
     def clean(self):
         super().clean()
         hoje = timezone.now().date()
-        limite = hoje - timedelta(days=15)
-        if self.data_aplicacao and self.data_aplicacao < limite:
-            raise ValidationError({'data_aplicacao': 'A data de aplicação não pode ser anterior a 15 dias.'})
-        if self.data_revacinacao and self.data_revacinacao < limite:
-            raise ValidationError({'data_revacinacao': 'A data de revacinação não pode ser anterior a 15 dias.'})
+        limite_passado = hoje - timedelta(days=15) # Validação para não ser muito antigo
+
+        # Validação para data_aplicacao
+        if self.data_aplicacao:
+            if self.data_aplicacao > hoje:
+                raise ValidationError({'data_aplicacao': 'A data de aplicação não pode estar no futuro.'})
+            if self.data_aplicacao < limite_passado:
+                raise ValidationError({'data_aplicacao': 'A data de aplicação não pode ser anterior a 15 dias atrás.'})
+        else:
+            # Se data_aplicacao é None, levanta erro se o campo for obrigatório
+            raise ValidationError({'data_aplicacao': 'Este campo é obrigatório.'})
+
+        # Validação para data_revacinacao
+        if self.data_revacinacao:
+            if self.data_revacinacao < hoje:
+                raise ValidationError({'data_revacinacao': 'A data de revacinação não pode estar no passado.'})
+            
+            # --- NOVA VALIDAÇÃO LÓGICA: data_revacinacao DEVE SER DEPOIS DE data_aplicacao ---
+            if self.data_aplicacao and self.data_revacinacao < self.data_aplicacao:
+                raise ValidationError({'data_revacinacao': 'A data de revacinação deve ser posterior à data de aplicação.'})
+        else:
+            # Se data_revacinacao é None, levanta erro se o campo for obrigatório
+            raise ValidationError({'data_revacinacao': 'Este campo é obrigatório.'})
+        if not self.animal: # Validação explícita para ForeignKey
+             raise ValidationError({'animal': 'O animal vacinado é obrigatório.'})
+        if not self.medicamento_aplicado: # Validação explícita para ForeignKey
+             raise ValidationError({'medicamento_aplicado': 'O medicamento aplicado é obrigatório.'})
     
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -455,8 +580,8 @@ class RegistroVacinacao(models.Model):
                     if not is_new and original_medicamento_aplicado:
                         MovimentoEstoqueMedicamento.objects.create(estoque_item=original_medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno de saída (vacinação) devido a alteração do registro #{self.pk}.")
                     MovimentoEstoqueMedicamento.objects.create(estoque_item=self.medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.SAIDA, quantidade=1, observacao=f"Aplicação em vacinação do animal {self.animal.nome if self.animal else 'N/A'} (Registro #{self.pk})")
-            elif not is_new and original_medicamento_aplicado:
-                MovimentoEstoqueMedicamento.objects.create(estoque_item=original_medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno de saída (vacinação) devido à remoção do medicamento do registro #{self.pk}")
+                elif not is_new and original_medicamento_aplicado:
+                    MovimentoEstoqueMedicamento.objects.create(estoque_item=original_medicamento_aplicado, tipo=MovimentoEstoqueMedicamento.ENTRADA, quantidade=1, observacao=f"Estorno de saída (vacinação) devido à remoção do medicamento do registro #{self.pk}")
     
     def delete(self, *args, **kwargs):
         with transaction.atomic():
@@ -470,17 +595,17 @@ class RegistroVacinacao(models.Model):
         return f"Vacinação de {animal_name} em {data_app}"
 
 class RegistroVermifugos(models.Model):
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Animal")
+    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, blank=False, null=True, verbose_name="Animal")
     medicamento_administrado = models.ForeignKey(
         'EstoqueMedicamento',
         on_delete=models.SET_NULL,
-        blank=True,
+        blank=False,
         null=True,
         verbose_name="Vermífugo/Lote Administrado",
         limit_choices_to={'tipo_medicamento': EstoqueMedicamento.VERMIFUGO}
     )
-    data_administracao = models.DateField(verbose_name="Data de Administração", blank=True, null=True)
-    data_readministracao = models.DateField(verbose_name="Data Readministração", blank=True, null=True)
+    data_administracao = models.DateField(verbose_name="Data de Administração", blank=False, null=True)
+    data_readministracao = models.DateField(verbose_name="Data Readministração", blank=False, null=True)
     
     class Meta:
         verbose_name = "Registro de Vermífugo"
