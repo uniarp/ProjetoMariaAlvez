@@ -100,7 +100,7 @@
             <p><strong>Total de Registros Encontrados:</strong> {{ vacinacoes.count }}</p>
 
             <div style="text-align: right; margin-bottom: 15px;">
-                <a href="{% url 'relatorio_vacinacao_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf">
+                <a href="{% url 'relatorio_vacinacao_pdf' %}{{ request.GET.urlencode }}" class="btn-pdf" target="_blank">
                     <i class="fas fa-file-pdf"></i> Imprimir em PDF
                 </a>
             </div>

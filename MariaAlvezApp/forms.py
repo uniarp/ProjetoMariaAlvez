@@ -78,11 +78,11 @@ class AgendamentoConsultasForm(forms.ModelForm):
     data_consulta_date = forms.DateField(
         label="Data da Consulta",
         widget=forms.DateInput(attrs={'type': 'date'}),
-        initial=timezone.now().date(),
         required=True
     )
 
     HORA_CHOICES = []
+    # Lógica para popular HORA_CHOICES (horas de 08:00 a 18:00, a cada 15 minutos)
     start_time = datetime.strptime("08:00", "%H:%M").time()
     end_time = datetime.strptime("18:00", "%H:%M").time() 
     current_time = start_time
@@ -96,7 +96,6 @@ class AgendamentoConsultasForm(forms.ModelForm):
         label="Hora da Consulta",
         choices=HORA_CHOICES,
         required=True,
-        initial=timezone.now().strftime("%H:%M") if start_time <= timezone.now().time() <= end_time else HORA_CHOICES[0][0]
     )
 
     class Meta:
@@ -105,75 +104,107 @@ class AgendamentoConsultasForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance.pk:
-            self.fields['data_consulta_date'].initial = self.instance.data_consulta.date()
-            self.fields['hora_consulta'].initial = self.instance.data_consulta.time().strftime("%H:%M")
-        else:
-            self.fields['animal'].initial = None
+        
+        print(f"DEBUG FORM: Inicializando formulário para instance.pk: {self.instance.pk}")
 
+        # Se estamos editando uma instância existente E ela tem data_consulta
+        if self.instance.pk and self.instance.data_consulta:
+            # --- AQUI ESTÁ A MUDANÇA CRUCIAL: USAR timezone.localtime() ---
+            # Converte o datetime salvo (em UTC) para o fuso horário local do TIME_ZONE
+            local_data_consulta = timezone.localtime(self.instance.data_consulta)
+            print(f"DEBUG FORM: Instância data_consulta (original): {self.instance.data_consulta}")
+            print(f"DEBUG FORM: Instância data_consulta (local): {local_data_consulta}")
+
+            # Define o valor para o campo de data, formatando para 'YYYY-MM-DD'
+            self.fields['data_consulta_date'].widget.attrs['value'] = local_data_consulta.strftime('%Y-%m-%d')
+            print(f"DEBUG FORM: Set data_consulta_date value to: {self.fields['data_consulta_date'].widget.attrs['value']}")
+            
+            # Define o valor inicial para o campo de hora (ChoiceField)
+            self.fields['hora_consulta'].initial = local_data_consulta.strftime("%H:%M")
+            print(f"DEBUG FORM: Set hora_consulta initial to: {self.fields['hora_consulta'].initial}")
+
+        else: # Se é um novo agendamento
+            # Preenche a data com a data atual (padrão para novos formulários)
+            self.fields['data_consulta_date'].initial = timezone.now().date()
+            
+            # Preenche a hora com a hora mais próxima das opções de HORA_CHOICES, considerando o tempo local atual
+            now_local_time = timezone.localtime(timezone.now()).time() # Pega a hora local atual
+            
+            closest_time = self.HORA_CHOICES[0][0] # Default para a primeira opção (08:00)
+            for choice_value, _ in self.HORA_CHOICES:
+                choice_time = datetime.strptime(choice_value, "%H:%M").time()
+                # Encontra a primeira hora de escolha que seja igual ou maior que a hora atual local
+                if choice_time >= now_local_time:
+                    closest_time = choice_value
+                    break
+            self.fields['hora_consulta'].initial = closest_time
+            
     def clean(self):
         cleaned_data = super().clean()
         data_consulta_date = cleaned_data.get('data_consulta_date')
         hora_consulta_str = cleaned_data.get('hora_consulta')
         animal = cleaned_data.get('animal')
 
-        combined_datetime = None 
-        errors = {} 
-
-        if not data_consulta_date:
-            errors['data_consulta_date'] = "Este campo é obrigatório."
-        if not hora_consulta_str:
-            errors['hora_consulta'] = "Este campo é obrigatório."
-
-        if data_consulta_date and hora_consulta_str:
-            try:
-                hora_consulta_obj = datetime.strptime(hora_consulta_str, "%H:%M").time()
-                combined_datetime = datetime.combine(data_consulta_date, hora_consulta_obj)
-                combined_datetime = timezone.make_aware(combined_datetime, timezone.get_current_timezone())
-                # Aqui definimos o combined_datetime, mas ainda não o atribuímos a cleaned_data['data_consulta']
-                # explicitamente para que o ModelForm não tente validar isso antes do tempo.
-            except ValueError:
-                errors['hora_consulta'] = "Formato de hora inválido."
+        # Combine date and time to form data_consulta
+        combined_datetime = None
         
-        if errors:
-            for field, msg in errors.items():
-                self.add_error(field, msg)
-            raise forms.ValidationError("Corrija os erros do formulário.") 
+        # Validar se os campos não estão vazios antes de tentar combinar
+        if not data_consulta_date:
+            self.add_error('data_consulta_date', "Este campo é obrigatório.")
+        if not hora_consulta_str:
+            self.add_error('hora_consulta', "Este campo é obrigatório.")
 
+        # Se houver erros no formulário até aqui (e não ValidationError geral), retorne.
+        if self.errors:
+            return cleaned_data
+            
+        try:
+            hora_consulta_obj = datetime.strptime(hora_consulta_str, "%H:%M").time()
+            combined_datetime = datetime.combine(data_consulta_date, hora_consulta_obj)
+            # Torna a datetime aware (importante para DateTimeField)
+            # make_aware() com o timezone padrão do projeto é a forma correta de salvar no DB
+            combined_datetime = timezone.make_aware(combined_datetime, timezone.get_current_timezone())
+        except ValueError:
+            self.add_error('hora_consulta', "Formato de hora inválido.")
+            return cleaned_data
+        
         # Validações que dependem de combined_datetime
         if combined_datetime:
+            # A data da consulta não pode estar no passado
+            # Importante: compare o combined_datetime (aware) com timezone.now() (aware)
             if combined_datetime < timezone.now():
                 self.add_error('data_consulta_date', "A data da consulta não pode estar no passado.")
             
+            # Validação de agendamentos duplicados para o mesmo animal no mesmo horário
             if animal:
+                # Remove segundos e microssegundos para a comparação (para coincidir com a precisão do ChoiceField)
                 data_hora_comparacao = combined_datetime.replace(second=0, microsecond=0)
+                
                 qs = AgendamentoConsultas.objects.filter(
                     animal=animal,
                     data_consulta=data_hora_comparacao
                 )
-                if self.instance.pk:
+                if self.instance.pk: # Se estiver editando, exclui a própria instância da checagem
                     qs = qs.exclude(pk=self.instance.pk)
                 
                 if qs.exists():
                     self.add_error('hora_consulta', "Já existe uma consulta agendada para este animal nesse horário.")
 
-        # FINALMENTE, atribui combined_datetime a cleaned_data['data_consulta'] aqui
-        # para que o método save() do ModelForm possa acessar o valor correto.
+        # Atribui combined_datetime a cleaned_data['data_consulta']
+        # Isso garante que o valor combinado seja passado para o save() do ModelForm
         cleaned_data['data_consulta'] = combined_datetime 
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        # ATENÇÃO: LINHA CRUCIAL ADICIONADA/CORRIGIDA AQUI!
-        # Garante que a data_consulta da instância do modelo seja definida com o valor combinado
-        # ANTES de ser salvo no banco de dados.
+        # ATENÇÃO: LINHA CRUCIAL! Garante que a data_consulta da instância do modelo seja definida
+        # com o valor combinado antes de ser salvo no banco de dados.
         instance.data_consulta = self.cleaned_data['data_consulta'] 
 
         if commit:
             instance.save()
         return instance
-
-# NOVO FORMULÁRIO PARA FILTRO DE REGISTRO DE SERVIÇO
+    
 class FiltroRegistroServicoForm(forms.Form):
     animal = forms.ModelChoiceField(queryset=Animal.objects.all(), required=False, label="Animal Atendido")
     empresa = forms.ModelChoiceField(queryset=EmpresaTerceirizada.objects.all(), required=False, label="Empresa Prestadora")

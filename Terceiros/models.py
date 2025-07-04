@@ -103,7 +103,6 @@ class EmpresaTerceirizada(models.Model):
 
 
 class RegistroServico(models.Model):
-    # ... (restante da sua classe RegistroServico) ...
     empresa = models.ForeignKey(
         EmpresaTerceirizada,
         on_delete=models.PROTECT,
@@ -113,7 +112,7 @@ class RegistroServico(models.Model):
     animal = models.ForeignKey(
         Animal, 
         on_delete=models.SET_NULL,
-        blank=True,
+        blank=False,
         null=True,
         verbose_name="Animal Atendido"
     )
@@ -129,7 +128,7 @@ class RegistroServico(models.Model):
         blank=True,
         null=True,
         verbose_name="Valor do Serviço (R$)",
-        help_text="Custo do serviço. Deixe em branco se não aplicável." # ASPAS ADICIONADAS AQUI
+        help_text="Custo do serviço. Deixe em branco se não aplicável."
     )
     
     medicamentos_aplicados = models.TextField(
@@ -143,6 +142,22 @@ class RegistroServico(models.Model):
         help_text="Descreva outros procedimentos, como curativos, exames, etc."
     )
     
+    def clean(self): # <--- ADICIONE ESTE MÉTODO OU ATUALIZE-O
+        super().clean()
+
+        # Validação para valor_servico (opcional, mas se preenchido, > 0)
+        # self.valor_servico pode ser None ou Decimal('0.00')
+        if self.valor_servico is not None and self.valor_servico <= 0:
+            raise ValidationError({
+                'valor_servico': 'O valor do serviço deve ser maior que zero, se preenchido.'
+            })
+        
+        # Validação para data_hora_procedimento (não pode ser no futuro)
+        if self.data_hora_procedimento and self.data_hora_procedimento > timezone.now():
+            raise ValidationError({
+                'data_hora_procedimento': 'A data e hora do procedimento não pode estar no futuro.'
+            })
+
     def __str__(self):
         nome_animal = self.animal.nome if self.animal else "Animal não informado"
         data_formatada = self.data_hora_procedimento.strftime('%d/%m/%Y às %H:%M')
